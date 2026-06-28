@@ -27,16 +27,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y librsvg2-bin
 
-      - name: Render keymap drawing (SVG + PNG)
+      - name: Render keymap drawing (PDF)
         run: |
           keymap parse -z config/toucan.keymap -c 12 -o config/toucan.keymap.yaml
           keymap draw config/toucan.keymap.yaml -j config/toucan.json -o config/toucan.svg
-          rsvg-convert -z 2 config/toucan.svg -o config/toucan.png
+          rsvg-convert -f pdf config/toucan.svg -o config/toucan.pdf
 
       - name: Upload keymap drawing
         uses: actions/upload-artifact@v4
         with:
           name: keymap-drawing
-          path: |
-            config/toucan.svg
-            config/toucan.png
+          path: config/toucan.pdf
