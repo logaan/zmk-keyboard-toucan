@@ -108,8 +108,8 @@
             display-name = "NAV";
             bindings = <
                 &trans          &trans          &kp UP          &mkp SCRL_UP    &trans          &trans                                          &trans          &trans          &msc SCRL_UP    &trans          &trans          &trans          
-                &trans          &kp LEFT        &kp DOWN        &kp RIGHT       &trans          &trans                                          &kp LEFT        &kp DOWN        &kp UP          &kp RIGHT       &trans          &trans          
-                &trans          &trans          &trans          &mkp SCRL_DOWN  &trans          &trans                                          &trans          &trans          &msc SCRL_DOWN  &trans          &trans          &trans          
+                &hm LCTRL ESC   &kp LEFT        &kp DOWN        &kp RIGHT       &trans          &trans                                          &kp LEFT        &kp DOWN        &kp UP          &kp RIGHT       &trans          &trans          
+                &kp LSHFT       &trans          &trans          &mkp SCRL_DOWN  &trans          &trans                                          &trans          &trans          &msc SCRL_DOWN  &trans          &trans          &trans          
                                                                                 &trans          &trans          &trans          &trans          &trans          &trans          
             >;
         };
@@ -117,9 +117,9 @@
         sym {
             display-name = "SYM";
             bindings = <
-                &kp TILDE       &kp EXCL        &kp AT          &kp LBKT        &kp RBKT        &kp PRCNT                                       &trans          &kp N7          &kp N8          &kp N9          &kp KP_MULTIPLY &trans          
-                &kp GRAVE       &kp HASH        &kp DLLR        &kp LPAR        &kp RPAR        &kp CARET                                       &trans          &kp N4          &kp N5          &kp N6          &kp PLUS        &trans          
-                &kp PIPE        &kp BSLH        &kp AMPS        &kp LBRC        &kp RBRC        &trans                                          &kp N0          &kp N1          &kp N2          &kp N3          &kp MINUS       &trans          
+                &kp TILDE       &kp EXCL        &kp AT          &kp LBKT        &kp RBKT        &kp GRAVE                                       &trans          &kp N7          &kp N8          &kp N9          &kp KP_MULTIPLY &kp PRCNT       
+                &hm LCTRL ESC   &kp HASH        &kp DLLR        &kp LPAR        &kp RPAR        &kp PIPE                                        &trans          &kp N4          &kp N5          &kp N6          &kp PLUS        &kp CARET       
+                &kp LSHFT       &kp BSLH        &kp AMPS        &kp LBRC        &kp RBRC        &trans                                          &kp N0          &kp N1          &kp N2          &kp N3          &kp MINUS       &trans          
                                                                                 &trans          &trans          &trans          &trans          &trans          &trans          
             >;
         };
@@ -138,8 +138,8 @@
             display-name = "TAP";
             bindings = <
                 &trans          &trans          &trans          &trans          &trans          &trans                                          &trans          &trans          &trans          &trans          &trans          &trans          
-                &trans          &trans          &mkp MCLK       &mkp LCLK       &mkp RCLK       &trans                                          &trans          &trans          &trans          &trans          &trans          &trans          
-                &trans          &trans          &trans          &trans          &trans          &trans                                          &trans          &trans          &trans          &trans          &trans          &trans          
+                &hm LCTRL ESC   &trans          &mkp MCLK       &mkp LCLK       &mkp RCLK       &trans                                          &trans          &trans          &trans          &trans          &trans          &trans          
+                &kp LSHFT       &trans          &trans          &trans          &trans          &trans                                          &trans          &trans          &trans          &trans          &trans          &trans          
                                                                                 &trans          &trans          &trans          &trans          &trans          &trans          
             >;
         };
