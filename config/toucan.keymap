@@ -10,7 +10,7 @@
 #define ADJ  3
 #define TAP  4
 
-#define ZMK_POINTING_DEFAULT_SCRL_VAL 100 // Default is 10;
+#define ZMK_POINTING_DEFAULT_SCRL_VAL 30 // Default is 10;
 
 &msc {
     acceleration-exponent = <0>;      // Disables acceleration for flat, predictable tapping
