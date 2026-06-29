@@ -30,31 +30,45 @@
     combos {
         compatible = "zmk,combos";
 
-        // Type numbers from the BASE layer without switching to SYM.
+        // Type numbers and bracket pairs from the BASE layer without switching
+        // to SYM. Each combo is the symbol's spot on the SYM layer plus the key
+        // immediately to one side, so the muscle memory follows where the symbol
+        // lives on SYM. All are restricted to BASE (layers = <BASE>) so the
+        // positions keep their normal behaviour on SYM/NAV/etc. timeout-ms is
+        // the window in which every key of the combo must land; tune up if a
+        // combo is hard to hit or down if it fires during fast typing rolls.
         //
-        // Each combo is the digit's spot on the SYM layer plus the key to its
-        // left, so the muscle memory matches where the number lives on SYM:
-        //   right hand top row  : 7=yu  8=ui  9=io
-        //   right hand home row : 4=hj  5=jk  6=kl
-        //   right hand bottom   : 1=nm  2=m,  3=,.   0=m,.
-        // Zero is the odd one out at three keys (m , .), overlapping the 2 and
-        // 3 combos; ZMK fires the longest matching combo when all three are
-        // held, and falls back to 2 or 3 when only two are pressed.
-        //
-        // Restricted to BASE (layers = <BASE>) so these positions keep their
-        // normal behaviour on SYM/NAV/etc. timeout-ms is the window in which
-        // every key of the combo must land; tune up if a digit is hard to hit
-        // or down if it fires during fast typing rolls.
-        combo_num_1 { timeout-ms = <50>; key-positions = <30 31>;    bindings = <&kp N1>; layers = <BASE>; };
-        combo_num_2 { timeout-ms = <50>; key-positions = <31 32>;    bindings = <&kp N2>; layers = <BASE>; };
-        combo_num_3 { timeout-ms = <50>; key-positions = <32 33>;    bindings = <&kp N3>; layers = <BASE>; };
-        combo_num_4 { timeout-ms = <50>; key-positions = <18 19>;    bindings = <&kp N4>; layers = <BASE>; };
-        combo_num_5 { timeout-ms = <50>; key-positions = <19 20>;    bindings = <&kp N5>; layers = <BASE>; };
-        combo_num_6 { timeout-ms = <50>; key-positions = <20 21>;    bindings = <&kp N6>; layers = <BASE>; };
-        combo_num_7 { timeout-ms = <50>; key-positions = <6 7>;      bindings = <&kp N7>; layers = <BASE>; };
-        combo_num_8 { timeout-ms = <50>; key-positions = <7 8>;      bindings = <&kp N8>; layers = <BASE>; };
-        combo_num_9 { timeout-ms = <50>; key-positions = <8 9>;      bindings = <&kp N9>; layers = <BASE>; };
+        // Digits sit on the right hand, each shifted one key to the right of the
+        // number's SYM position so the pairs land on more comfortable rolls:
+        //   top row  : 7=ui  8=io  9=op
+        //   home row : 4=jk  5=kl  6=l;
+        //   bottom   : 1=m,  2=,.  3=./   0=m,.
+        // Zero stays the three-key odd one out (m , .), nesting over the 1 and 2
+        // combos; ZMK fires the longest matching combo, so m+,+. gives 0 while
+        // m+, alone gives 1 and ,+. alone gives 2.
+        combo_num_1 { timeout-ms = <50>; key-positions = <31 32>;    bindings = <&kp N1>; layers = <BASE>; };
+        combo_num_2 { timeout-ms = <50>; key-positions = <32 33>;    bindings = <&kp N2>; layers = <BASE>; };
+        combo_num_3 { timeout-ms = <50>; key-positions = <33 34>;    bindings = <&kp N3>; layers = <BASE>; };
+        combo_num_4 { timeout-ms = <50>; key-positions = <19 20>;    bindings = <&kp N4>; layers = <BASE>; };
+        combo_num_5 { timeout-ms = <50>; key-positions = <20 21>;    bindings = <&kp N5>; layers = <BASE>; };
+        combo_num_6 { timeout-ms = <50>; key-positions = <21 22>;    bindings = <&kp N6>; layers = <BASE>; };
+        combo_num_7 { timeout-ms = <50>; key-positions = <7 8>;      bindings = <&kp N7>; layers = <BASE>; };
+        combo_num_8 { timeout-ms = <50>; key-positions = <8 9>;      bindings = <&kp N8>; layers = <BASE>; };
+        combo_num_9 { timeout-ms = <50>; key-positions = <9 10>;     bindings = <&kp N9>; layers = <BASE>; };
         combo_num_0 { timeout-ms = <50>; key-positions = <31 32 33>; bindings = <&kp N0>; layers = <BASE>; };
+
+        // Bracket pairs, same idea as the digits: the symbol's SYM spot plus the
+        // key to its left. Left/right halves of each pair sit side by side on
+        // the same BASE row as the brackets do on SYM:
+        //   ( = sd  ) = df   (home row)
+        //   [ = we  ] = er   (top row)
+        //   { = xc  } = cv   (bottom row)
+        combo_lpar { timeout-ms = <50>; key-positions = <14 15>; bindings = <&kp LPAR>; layers = <BASE>; };
+        combo_rpar { timeout-ms = <50>; key-positions = <15 16>; bindings = <&kp RPAR>; layers = <BASE>; };
+        combo_lbkt { timeout-ms = <50>; key-positions = <2 3>;   bindings = <&kp LBKT>; layers = <BASE>; };
+        combo_rbkt { timeout-ms = <50>; key-positions = <3 4>;   bindings = <&kp RBKT>; layers = <BASE>; };
+        combo_lbrc { timeout-ms = <50>; key-positions = <26 27>; bindings = <&kp LBRC>; layers = <BASE>; };
+        combo_rbrc { timeout-ms = <50>; key-positions = <27 28>; bindings = <&kp RBRC>; layers = <BASE>; };
 
         // Disabled in favour of a nested alt layer, kept for reference:
         // hold all four corner keys of one half to jump it into the bootloader.
