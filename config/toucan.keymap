@@ -27,28 +27,41 @@
         };
     };
 
-    // I'm disabling combos for now in favour of nested alt layer.
-    //
-    // combos {
-    //     compatible = "zmk,combos";
+    combos {
+        compatible = "zmk,combos";
 
-    //     // Hold all four corner keys of one half to jump that half into the
-    //     // bootloader. Key positions are the four corners of each 3-row block:
-    //     //   left  -> top-left 0,  top-right 5,  bottom-left 24, bottom-right 29
-    //     //   right -> top-left 6, top-right 11, bottom-left 30, bottom-right 35
-    //     // Deliberate to hit, so they're hard to trigger by accident.
-    //     combo_boot_left {
-    //         timeout-ms = <100>;
-    //         key-positions = <0 5 24 29>;
-    //         bindings = <&bootloader>;
-    //     };
+        // Type numbers from the BASE layer without switching to SYM.
+        //
+        // Each combo is the digit's spot on the SYM layer plus the key to its
+        // left, so the muscle memory matches where the number lives on SYM:
+        //   right hand top row  : 7=yu  8=ui  9=io
+        //   right hand home row : 4=hj  5=jk  6=kl
+        //   right hand bottom   : 1=nm  2=m,  3=,.   0=m,.
+        // Zero is the odd one out at three keys (m , .), overlapping the 2 and
+        // 3 combos; ZMK fires the longest matching combo when all three are
+        // held, and falls back to 2 or 3 when only two are pressed.
+        //
+        // Restricted to BASE (layers = <BASE>) so these positions keep their
+        // normal behaviour on SYM/NAV/etc. timeout-ms is the window in which
+        // every key of the combo must land; tune up if a digit is hard to hit
+        // or down if it fires during fast typing rolls.
+        combo_num_1 { timeout-ms = <50>; key-positions = <30 31>;    bindings = <&kp N1>; layers = <BASE>; };
+        combo_num_2 { timeout-ms = <50>; key-positions = <31 32>;    bindings = <&kp N2>; layers = <BASE>; };
+        combo_num_3 { timeout-ms = <50>; key-positions = <32 33>;    bindings = <&kp N3>; layers = <BASE>; };
+        combo_num_4 { timeout-ms = <50>; key-positions = <18 19>;    bindings = <&kp N4>; layers = <BASE>; };
+        combo_num_5 { timeout-ms = <50>; key-positions = <19 20>;    bindings = <&kp N5>; layers = <BASE>; };
+        combo_num_6 { timeout-ms = <50>; key-positions = <20 21>;    bindings = <&kp N6>; layers = <BASE>; };
+        combo_num_7 { timeout-ms = <50>; key-positions = <6 7>;      bindings = <&kp N7>; layers = <BASE>; };
+        combo_num_8 { timeout-ms = <50>; key-positions = <7 8>;      bindings = <&kp N8>; layers = <BASE>; };
+        combo_num_9 { timeout-ms = <50>; key-positions = <8 9>;      bindings = <&kp N9>; layers = <BASE>; };
+        combo_num_0 { timeout-ms = <50>; key-positions = <31 32 33>; bindings = <&kp N0>; layers = <BASE>; };
 
-    //     combo_boot_right {
-    //         timeout-ms = <100>;
-    //         key-positions = <6 11 30 35>;
-    //         bindings = <&bootloader>;
-    //     };
-    // };
+        // Disabled in favour of a nested alt layer, kept for reference:
+        // hold all four corner keys of one half to jump it into the bootloader.
+        //   left  -> 0 5 24 29   right -> 6 11 30 35
+        // combo_boot_left  { timeout-ms = <100>; key-positions = <0 5 24 29>;  bindings = <&bootloader>; };
+        // combo_boot_right { timeout-ms = <100>; key-positions = <6 11 30 35>; bindings = <&bootloader>; };
+    };
 
     behaviors {
         // "Timeless homerow mods" style hold-tap, applied as a layer-tap.
