@@ -15,7 +15,7 @@
 &msc {
     acceleration-exponent = <0>;      // Disables acceleration for flat, predictable tapping
     time-to-max-speed-ms = <0>;       // Instantly outputs full speed on tap
-    delay-ms = <0>;                   // Removes tap response lag
+    // delay-ms = <0>;                   // Removes tap response lag
 };
 
 / {
