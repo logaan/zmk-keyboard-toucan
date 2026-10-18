@@ -26,6 +26,6 @@ manifest:
       revision: v0.3
     - name: zmk-braille-module
       url: https://github.com/logaan/zmk-braille-module
-      revision: 5273efebd5f13f7bff506609da79f5f9954b892e
+      revision: db8d74a693ad183c6af01bd356f05b67c3974ae5
   self:
     path: config
