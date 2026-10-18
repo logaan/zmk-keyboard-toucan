@@ -3,7 +3,7 @@
 [The beekeeb Toucan Keyboard] is a wireless split 42-key column‑stagger keyboard
 that a display and a trackpad, with an aggressive stagger on the pinky columns.
 
-## Pinned Braille bring-up
+## Pinned Braille input
 
 `config/west.yml` pins ZMK v0.3.0 and a published `zmk-braille-module` commit.
 West discovers the module automatically. Only `toucan_left.conf` in the shield
@@ -18,10 +18,15 @@ The left outer thumb or top-right key explicitly returns to BASE (`&to BASE`).
 BASE-only number/bracket combos do not apply on BRL. Its named default character
 mode is `ueb1`; the layer key does not select a character table.
 
-**Compile/link bring-up only:** the pinned Braille callbacks return `-ENOTSUP`.
-They do not yet enter BRL, capture chords, type letters/space, or show settings.
-Conventional typing, Studio, display, and pointing remain configured. Hardware
-acceptance follows the alphabet implementation; these builds are not that test.
+The pinned module enters BRL through the mode key, captures each chord on its
+final Braille-key release, and types the 26 lowercase six-dot alphabet letters
+in `ueb1`. Braille space alone types a literal space; sourced factory commands
+provide navigation, Tab/Return/Delete, and sticky modifiers. See the pinned
+module's [command reference](https://github.com/logaan/zmk-braille-module/tree/97c7b40fecf6112afc18742b6e7b29fb8389d387#direct-factory-commands)
+for the exact chords and limitations. Literary signs, a settings UI, and
+persistence are not implemented yet. Conventional typing, Studio, display, and
+pointing remain configured. Software verification does not replace physical
+keyboard/macOS/BLE acceptance, which is still pending.
 
 The existing CI firmware matrix includes both halves and settings reset. For
 repeatable local Docker 3.5 builds on the shared pinned workspace, see
