@@ -26,6 +26,8 @@ manifest:
       revision: v0.3
     - name: zmk-braille-module
       url: https://github.com/logaan/zmk-braille-module
-      revision: db8d74a693ad183c6af01bd356f05b67c3974ae5
+      # Reviewed six-dot alphabet commit, from the module history after the
+      # 2026-10-18 rewrite that dropped the ICEB PDF (content unchanged).
+      revision: dd9a0254ce27d714fc8e2afa468787155a46a087
   self:
     path: config
