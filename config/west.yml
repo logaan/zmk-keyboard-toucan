@@ -13,10 +13,14 @@ manifest:
   projects:
     - name: zmk
       remote: zmkfirmware
+      # Latest release verified via GitHub releases/latest on 2026-10-18.
+      # v0.3.0 = edf5c0814fd3ea202e43aad2d68fd32e882a518c
+      revision: v0.3.0
       import: app/west.yml
     - name: cirque-input-module
       remote: geeksville
-      revision: toucan
+      # Snapshot of upstream toucan; do not let baseline builds drift.
+      revision: effec100f0cd3a38e7fba3adfea394586cc84cab
     - name: zmk-rgbled-widget
       remote: caksoylar
       revision: v0.3
