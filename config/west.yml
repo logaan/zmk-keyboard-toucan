@@ -28,6 +28,6 @@ manifest:
       url: https://github.com/logaan/zmk-braille-module
       # Published module snapshot with six-dot alphabet input, sourced factory
       # commands, sticky modifiers, and native ZMK verification.
-      revision: 97c7b40fecf6112afc18742b6e7b29fb8389d387
+      revision: 66c72c23bb98fce08ec993d3797c7711533c2879
   self:
     path: config

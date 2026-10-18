@@ -22,8 +22,8 @@ The pinned module enters BRL through the mode key, captures each chord on its
 final Braille-key release, and types the 26 lowercase six-dot alphabet letters
 in `ueb1`. Braille space alone types a literal space; sourced factory commands
 provide navigation, Tab/Return/Delete, and sticky modifiers. See the pinned
-module's [command reference](https://github.com/logaan/zmk-braille-module/tree/97c7b40fecf6112afc18742b6e7b29fb8389d387#direct-factory-commands)
-for the exact chords and limitations. Literary signs, a settings UI, and
+module's [factory command table](https://github.com/logaan/zmk-braille-module/blob/66c72c23bb98fce08ec993d3797c7711533c2879/src/braille_rules_nav.c)
+for the exact chords; Globe is not Apple's Fn modifier. Literary signs, a settings UI, and
 persistence are not implemented yet. Conventional typing, Studio, display, and
 pointing remain configured. Software verification does not replace physical
 keyboard/macOS/BLE acceptance, which is still pending.
