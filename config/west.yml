@@ -24,5 +24,8 @@ manifest:
     - name: zmk-rgbled-widget
       remote: caksoylar
       revision: v0.3
+    - name: zmk-braille-module
+      url: https://github.com/logaan/zmk-braille-module
+      revision: 5273efebd5f13f7bff506609da79f5f9954b892e
   self:
     path: config
