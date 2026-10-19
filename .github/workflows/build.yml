@@ -4,6 +4,8 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   build:
     uses: zmkfirmware/zmk/.github/workflows/build-user-config.yml@v0.3.0
+    with:
+      archive_name: qbf-toucan-firmware-build-${{ github.run_number }}
 
   draw:
     runs-on: ubuntu-latest
@@ -36,5 +38,5 @@ jobs:
       - name: Upload keymap drawing
         uses: actions/upload-artifact@v4
         with:
-          name: keymap-drawing
+          name: qbf-toucan-keymap-build-${{ github.run_number }}
           path: config/toucan.pdf
