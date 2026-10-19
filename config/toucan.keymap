@@ -174,13 +174,14 @@
         };
         // bmode is a hold/tap Braille-layer key, not a character-mode selector.
         // The left outer thumb and top-right key explicitly return to BASE.
-        // These bindings compile now; bmode/capture are implemented later.
+        // Navigation above the home-row dots; alternate Braille dots below.
+        // LS(TAB) holds Shift with Tab and releases it when Tab is released.
         braille {
             display-name = "BRL";
             bindings = <
-                &none           &none           &none           &none           &none           &none                                           &none           &none           &none           &none           &none           &to BASE
+                &none           &kp LEFT        &kp ESC         &kp UP          &kp LS(TAB)     &none                                           &none           &kp TAB         &kp DOWN        &kp RET         &kp RIGHT       &to BASE
                 &kp LCTRL       &bc 7           &bc 3           &bc 2           &bc 1           &none                                           &none           &bc 4           &bc 5           &bc 6           &bc 8           &none
-                &kp LSHFT       &none           &none           &none           &none           &none                                           &none           &none           &none           &none           &none           &none
+                &kp LSHFT       &bc 8           &bc 6           &bc 5           &bc 4           &none                                           &none           &bc 1           &bc 2           &bc 3           &bc 7           &none
                                                                                 &to BASE        &kp BSPC        &kp LGUI        &bspc           &kp RET         &none
             >;
         };

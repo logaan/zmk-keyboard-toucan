@@ -1,8 +1,8 @@
 layout: {zmk_keyboard: toucan}
 layers:
   BASE:
-  - [TAB, Q, W, E, R, T, Y, U, I, O, P, '-']
-  - - {t: ESC, h: LCTRL}
+  - [TAB, Q, W, E, R, T, Y, U, I, O, P, ESC]
+  - - LCTRL
     - A
     - S
     - D
@@ -13,9 +13,9 @@ layers:
     - K
     - L
     - {t: ;, h: NAV}
-    - ''''
-  - [LSHFT, Z, X, C, V, B, N, M, ',', ., /, RALT]
-  - - SYM
+    - {t: '''', h: LALT}
+  - [LSHFT, Z, X, C, V, B, N, M, ',', ., /, '-']
+  - - '&bmode 5'
     - BSPC
     - LGUI
     - SPACE
@@ -81,7 +81,7 @@ layers:
     - '#'
     - $
     - (
-    - )
+    - {t: ), h: NAV}
     - '|'
     - {t: ▽, type: trans}
     - '4'
@@ -101,11 +101,11 @@ layers:
     - '3'
     - '-'
     - {t: ▽, type: trans}
-  - - {type: held}
+  - - {t: ▽, type: trans}
     - {t: ▽, type: trans}
     - {t: ▽, type: trans}
     - {t: ▽, type: trans}
-    - {t: ▽, type: trans}
+    - {type: held}
     - {t: ▽, type: trans}
   ADJ:
   - - BT CLR
@@ -144,11 +144,11 @@ layers:
     - {t: ▽, type: trans}
     - {t: ▽, type: trans}
     - {t: ▽, type: trans}
-  - - {type: held}
+  - - {t: ▽, type: trans}
     - {t: ▽, type: trans}
     - {t: ▽, type: trans}
     - {t: ▽, type: trans}
-    - {t: ▽, type: trans}
+    - {type: held}
     - {t: ▽, type: trans}
   TAP:
   - - {t: ▽, type: trans}
@@ -193,6 +193,27 @@ layers:
     - {t: ▽, type: trans}
     - {t: ▽, type: trans}
     - {t: ▽, type: trans}
+  BRL:
+  - - ''
+    - LEFT
+    - ESC
+    - UP
+    - Sft+TAB
+    - ''
+    - ''
+    - TAB
+    - DOWN
+    - RET
+    - RIGHT
+    - {t: BASE, h: toggle}
+  - [LCTRL, '&bc 7', '&bc 3', '&bc 2', '&bc 1', '', '', '&bc 4', '&bc 5', '&bc 6', '&bc 8', '']
+  - [LSHFT, '&bc 8', '&bc 6', '&bc 5', '&bc 4', '', '', '&bc 1', '&bc 2', '&bc 3', '&bc 7', '']
+  - - {t: BASE, h: toggle}
+    - BSPC
+    - LGUI
+    - '&bspc'
+    - RET
+    - ''
 combos:
 - p: [31, 32]
   k: '1'
