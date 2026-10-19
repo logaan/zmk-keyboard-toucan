@@ -5,15 +5,14 @@
 #
 # This does NOT build locally. ZMK is built by GitHub Actions
 # (.github/workflows/build.yml -> zmkfirmware build-user-config), which uploads
-# a "firmware" artifact containing the .uf2 files. This script downloads that
-# artifact and copies the .uf2 onto the keyboard's bootloader drive, walking
+# an artifact containing the .uf2 files (its name may be customized). This script
+# downloads the workflow artifacts and copies the .uf2 onto the bootloader drive, walking
 # you through entering the bootloader from the keymap.
 #
 # Entering the bootloader (set up in config/toucan.keymap on the ADJ layer):
-#   Hold the NAV thumb key (far-left thumb) + SYM thumb key (far-right thumb)
-#   together to reach the ADJ layer, then tap:
-#       Q  -> puts the LEFT half into the bootloader
-#       P  -> puts the RIGHT half into the bootloader
+#   Hold NAV (F or ;) + SYM (far-right thumb) to reach the ADJ layer, then tap:
+#       Left outer home-row key  -> puts the LEFT half into the bootloader
+#       Right outer home-row key -> puts the RIGHT half into the bootloader
 #   (Both halves must be powered/paired for the ADJ combo to register.)
 #   Fallback: double-tap the reset button on the half you want to flash.
 #
@@ -88,15 +87,17 @@ conclusion=$(gh run view "$run_id" --json conclusion -q .conclusion)
 # ---- download the firmware artifact ----
 workdir=$(mktemp -d "${TMPDIR:-/tmp}/toucan-fw.XXXXXX")
 trap 'rm -rf "$workdir"' EXIT
-step "Downloading firmware from run $run_id…"
-gh run download "$run_id" -n firmware -D "$workdir" \
-  || die "could not download the 'firmware' artifact from run $run_id"
+step "Downloading artifacts from run $run_id…"
+# Do not hard-code the reusable workflow's archive_name. Downloading all
+# artifacts puts each in its own directory (the keymap PDF is ignored below).
+gh run download "$run_id" -D "$workdir" \
+  || die "could not download artifacts from run $run_id"
 
 # locate a single .uf2 matching a glob (filenames contain spaces)
 find_uf2() {
   local pat="$1" matches=()
   while IFS= read -r -d '' f; do matches+=("$f"); done \
-    < <(find "$workdir" -maxdepth 1 -name "$pat" -print0)
+    < <(find "$workdir" -maxdepth 2 -type f -name "$pat" -print0)
   [ ${#matches[@]} -eq 1 ] || return 1
   printf '%s' "${matches[0]}"
 }
@@ -126,16 +127,16 @@ flash_file() {
   say "  ${bold}✓ ${label} half flashed.${reset}"
 }
 
-combo="Hold NAV (far-left thumb) + SYM (far-right thumb) to reach ADJ, then tap"
+combo="Hold NAV (F or ;) + SYM (far-right thumb) to reach ADJ, then tap"
 
 for t in "${targets[@]}"; do
   case "$t" in
     left)
       f=$(find_uf2 '*toucan_left*-zmk.uf2')  || die "couldn't find the left .uf2 in the artifact"
-      flash_file "LEFT"  "$combo ${bold}Q${reset}  (or double-tap reset on the left half)"  "$f";;
+      flash_file "LEFT"  "$combo the ${bold}left outer home-row key${reset}  (or double-tap reset on the left half)"  "$f";;
     right)
       f=$(find_uf2 '*toucan_right*-zmk.uf2') || die "couldn't find the right .uf2 in the artifact"
-      flash_file "RIGHT" "$combo ${bold}P${reset}  (or double-tap reset on the right half)" "$f";;
+      flash_file "RIGHT" "$combo the ${bold}right outer home-row key${reset}  (or double-tap reset on the right half)" "$f";;
     reset)
       f=$(find_uf2 'settings_reset*-zmk.uf2') || die "couldn't find the settings_reset .uf2 in the artifact"
       flash_file "SETTINGS-RESET" "Double-tap the reset button on the half you want to wipe" "$f";;

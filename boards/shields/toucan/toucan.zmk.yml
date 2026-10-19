@@ -1,13 +1,14 @@
 file_format: "1"
 id: toucan
-name: Toucan
+name: Toucan2
 type: shield
-url: https://github.com/beekeeb/zmk-keyboard-toucan/
+url: https://github.com/beekeeb/zmk-keyboard-toucan2/
 requires: [seeeduino_xiao_ble]
 features:
   - keys
   - display
   - studio
+  - pointer
 siblings:
   - toucan_left
   - toucan_right
