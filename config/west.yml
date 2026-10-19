@@ -8,8 +8,8 @@ manifest:
       url-base: https://github.com/petejohanson/
     - name: caksoylar
       url-base: https://github.com/caksoylar
-    - name: geeksville
-      url-base: https://github.com/geeksville
+    - name: beekeeb
+      url-base: https://github.com/beekeeb
   projects:
     - name: zmk
       remote: zmkfirmware
@@ -17,13 +17,18 @@ manifest:
       # v0.3.0 = edf5c0814fd3ea202e43aad2d68fd32e882a518c
       revision: v0.3.0
       import: app/west.yml
-    - name: cirque-input-module
-      remote: geeksville
-      # Snapshot of upstream toucan; do not let baseline builds drift.
-      revision: effec100f0cd3a38e7fba3adfea394586cc84cab
     - name: zmk-rgbled-widget
       remote: caksoylar
       revision: v0.3
+    - name: zmk_driver_azoteq
+      remote: beekeeb
+      # Toucan2 TPS43 driver, pinned at main's tip for throttled
+      # three-finger swipes (the older default master branch lacks them).
+      revision: c329f309b7481e5723603550b15f48e24d0c8a6a
+    - name: zmk-input-zoom
+      remote: beekeeb
+      # Zoom input processor used by the trackpad listener.
+      revision: 91bbe0c0e02145da50c9df798489479d28be1804
     - name: zmk-braille-module
       url: https://github.com/logaan/zmk-braille-module
       # Published module snapshot: contextual UEB Grade 1, Computer8 and
