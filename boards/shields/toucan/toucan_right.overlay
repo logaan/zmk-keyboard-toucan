@@ -1,4 +1,5 @@
 #include "toucan.dtsi"
+#include "toucan-matrix.dtsi"
 
 &default_transform {
     col-offset = <6>;

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # build-and-load — fetch the CI-built ZMK firmware for the current commit and
-# flash it onto the Toucan halves over the UF2 bootloader.
+# flash it onto the Toucan halves or Prospector over the UF2 bootloader.
 #
 # This does NOT build locally. ZMK is built by GitHub Actions
 # (.github/workflows/build.yml -> zmkfirmware build-user-config), which uploads
@@ -17,11 +17,20 @@
 #   Fallback: double-tap the reset button on the half you want to flash.
 #
 # Usage:
-#   scripts/build-and-load                  # flash left then right (default)
-#   scripts/build-and-load left             # flash only the left half
-#   scripts/build-and-load right            # flash only the right half
-#   scripts/build-and-load left right reset # also flash settings_reset
-#   scripts/build-and-load --run 123456789  # use a specific workflow run id
+#   scripts/build-and-load                          # standalone left then right
+#   scripts/build-and-load left                     # standalone left only
+#   scripts/build-and-load right                    # right (same in both profiles)
+#   scripts/build-and-load --profile prospector      # dongle, peripheral left, right
+#   scripts/build-and-load --profile prospector left # peripheral left only
+#   scripts/build-and-load --profile prospector dongle
+#   scripts/build-and-load reset                     # wipe ONE device's settings
+#   scripts/build-and-load --dry-run                 # download/list, do not flash
+#   scripts/build-and-load --run 123456789           # specific workflow run id
+#
+# --profile defaults to standalone. Switching profiles is NOT automatic: follow
+# README.md to settings-reset all devices and re-pair. Reset is never implicit.
+# Mount only the device you intend to flash. The Prospector's own bootloader is
+# entered by double-tapping its reset button, not the keyboard's ADJ bindings.
 #
 set -euo pipefail
 
@@ -33,6 +42,38 @@ say()  { printf '%s\n' "$*"; }
 step() { printf '\n%s==>%s %s\n' "$bold" "$reset" "$*"; }
 die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
 
+# ---- parse args before checking gh, so --help works without credentials ----
+run_id=""
+profile=standalone
+dry_run=0
+targets=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --run)
+      [ $# -ge 2 ] || die "--run needs a run id"
+      run_id="$2"; shift 2;;
+    --profile)
+      [ $# -ge 2 ] || die "--profile needs standalone or prospector"
+      profile="$2"; shift 2;;
+    --dry-run)    dry_run=1; shift;;
+    left|right|dongle|reset) targets+=("$1"); shift;;
+    both)         targets+=(left right); shift;;
+    -h|--help)    awk 'NR == 1 {next} /^set -/ {exit} {sub(/^# ?/, ""); print}' "$0"; exit 0;;
+    *)            die "unknown argument: $1 (try --help)";;
+  esac
+done
+case "$profile" in
+  standalone|prospector) ;;
+  *) die "unknown profile: $profile (expected standalone or prospector)";;
+esac
+if [ ${#targets[@]} -eq 0 ]; then
+  if [ "$profile" = prospector ]; then targets=(dongle left right); else targets=(left right); fi
+fi
+for t in "${targets[@]}"; do
+  [ "$t" != dongle ] || [ "$profile" = prospector ] \
+    || die "dongle requires --profile prospector"
+done
+
 # ---- prerequisites (detect & instruct, no auto-install) ----
 missing=0
 if ! command -v gh >/dev/null 2>&1; then
@@ -43,20 +84,6 @@ elif ! gh auth status >/dev/null 2>&1; then
   missing=1
 fi
 [ "$missing" -eq 0 ] || die "Install/fix the prerequisites above, then re-run."
-
-# ---- parse args ----
-run_id=""
-targets=()
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --run)        run_id="${2:?--run needs a run id}"; shift 2;;
-    left|right|reset) targets+=("$1"); shift;;
-    both)         targets+=(left right); shift;;
-    -h|--help)    sed -n '2,/^set -/{/^set -/d;s/^#\{0,1\} \{0,1\}//;p;}' "$0"; exit 0;;
-    *)            die "unknown argument: $1 (try --help)";;
-  esac
-done
-[ ${#targets[@]} -gt 0 ] || targets=(left right)
 
 # ---- find the workflow run to download ----
 sha=$(git rev-parse HEAD)
@@ -87,7 +114,7 @@ conclusion=$(gh run view "$run_id" --json conclusion -q .conclusion)
 # ---- download the firmware artifact ----
 workdir=$(mktemp -d "${TMPDIR:-/tmp}/toucan-fw.XXXXXX")
 trap 'rm -rf "$workdir"' EXIT
-step "Downloading artifacts from run $run_id…"
+step "Downloading artifacts from run ${run_id}…"
 # Do not hard-code the reusable workflow's archive_name. Downloading all
 # artifacts puts each in its own directory (the keymap PDF is ignored below).
 gh run download "$run_id" -D "$workdir" \
@@ -106,7 +133,7 @@ find_uf2() {
 # the firmware onto it, then wait for it to eject (= flashing complete).
 flash_file() {
   local label="$1" how="$2" uf2="$3"
-  step "Flash the ${label} half"
+  step "Flash ${label}"
   say "  → ${how}"
   say "  Waiting for the bootloader drive to mount…"
 
@@ -124,23 +151,54 @@ flash_file() {
   sync
   say "  Waiting for the drive to eject (board reboots when done)…"
   while [ -e "$vol/INFO_UF2.TXT" ]; do sleep 0.4; done
-  say "  ${bold}✓ ${label} half flashed.${reset}"
+  say "  ${bold}✓ ${label} flashed.${reset}"
 }
 
 combo="Hold NAV (F or ;) + SYM (far-right thumb) to reach ADJ, then tap"
 
+# Resolve ALL images before touching a device. In particular, never let a
+# wildcard silently select the other profile's left firmware.
+firmware=()
+labels=()
+instructions=()
 for t in "${targets[@]}"; do
   case "$t" in
     left)
-      f=$(find_uf2 '*toucan_left*-zmk.uf2')  || die "couldn't find the left .uf2 in the artifact"
-      flash_file "LEFT"  "$combo the ${bold}left outer home-row key${reset}  (or double-tap reset on the left half)"  "$f";;
+      if [ "$profile" = prospector ]; then
+        pattern='toucan_left_peripheral-zmk.uf2'
+      else
+        pattern='*toucan_left[ -]*-zmk.uf2'
+      fi
+      labels+=("LEFT half ($profile)")
+      instructions+=("$combo the ${bold}left outer home-row key${reset} (or double-tap reset on the left half)");;
     right)
-      f=$(find_uf2 '*toucan_right*-zmk.uf2') || die "couldn't find the right .uf2 in the artifact"
-      flash_file "RIGHT" "$combo the ${bold}right outer home-row key${reset}  (or double-tap reset on the right half)" "$f";;
+      pattern='*toucan_right[ -]*-zmk.uf2'
+      labels+=("RIGHT half (shared)")
+      instructions+=("$combo the ${bold}right outer home-row key${reset} (or double-tap reset on the right half)");;
+    dongle)
+      pattern='toucan_prospector-zmk.uf2'
+      labels+=("PROSPECTOR dongle")
+      instructions+=("Double-tap the reset button on the Prospector");;
     reset)
-      f=$(find_uf2 'settings_reset*-zmk.uf2') || die "couldn't find the settings_reset .uf2 in the artifact"
-      flash_file "SETTINGS-RESET" "Double-tap the reset button on the half you want to wipe" "$f";;
+      pattern='settings_reset*-zmk.uf2'
+      labels+=("SETTINGS-RESET (erases pairing and saved settings)")
+      instructions+=("Double-tap reset on the ONE device you want to wipe; keep all others off");;
   esac
+  f=$(find_uf2 "$pattern") || die "expected exactly one $t .uf2 for profile $profile (pattern: $pattern)"
+  firmware+=("$f")
+done
+
+step "Selected firmware (profile: $profile)"
+for ((i = 0; i < ${#targets[@]}; i++)); do
+  say "  ${labels[$i]}: $(basename "${firmware[$i]}")"
+done
+if [ "$dry_run" -eq 1 ]; then
+  say "Dry run: no devices flashed."
+  exit 0
+fi
+say "Changing profiles? Follow README.md's settings-reset/re-pair procedure first."
+for ((i = 0; i < ${#targets[@]}; i++)); do
+  flash_file "${labels[$i]}" "${instructions[$i]}" "${firmware[$i]}"
 done
 
 step "All done."

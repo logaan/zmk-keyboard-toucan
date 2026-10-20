@@ -1,3 +1,29 @@
+if SHIELD_TOUCAN_DONGLE
+
+config ZMK_KEYBOARD_NAME
+    default "Toucan"
+
+config ZMK_SPLIT_ROLE_CENTRAL
+    default y
+
+# Two keyboard halves plus the usual five host profiles.
+config ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS
+    default 2
+
+config BT_MAX_CONN
+    default 7
+
+config BT_MAX_PAIRED
+    default 7
+
+config ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING
+    default y
+
+config ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_PROXY
+    default y
+
+endif
+
 if SHIELD_TOUCAN_LEFT
 
 config ZMK_KEYBOARD_NAME
@@ -16,10 +42,10 @@ endif
 
 
 
-if SHIELD_TOUCAN_LEFT || SHIELD_TOUCAN_RIGHT
+if SHIELD_TOUCAN_LEFT || SHIELD_TOUCAN_LEFT_PERIPHERAL || SHIELD_TOUCAN_RIGHT || SHIELD_TOUCAN_DONGLE
 
 config SPI
-    default y if SHIELD_TOUCAN_LEFT
+    default y if SHIELD_TOUCAN_LEFT || SHIELD_TOUCAN_LEFT_PERIPHERAL
 
 config ZMK_SPLIT
     default y

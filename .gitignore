@@ -3,3 +3,4 @@
 .lot.toml
 config/toucan.pdf
 config/toucan.svg
+__pycache__/

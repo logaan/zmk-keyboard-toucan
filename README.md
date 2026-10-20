@@ -53,8 +53,9 @@ Hardware defaults live in the shield `.conf` files; the redundant, broken
 `config/west.yml` pins ZMK v0.3.0 and `zmk-braille-module` at
 [`86a25867cf27f6d2d7b25e8ef17066d91c202e2a`](https://github.com/logaan/zmk-braille-module/commit/86a25867cf27f6d2d7b25e8ef17066d91c202e2a),
 the latest pushed `main` snapshot when this pin was updated. West discovers the
-module automatically. Only `toucan_left.conf` in the shield
-enables processing; the right half keeps forwarding physical positions.
+module automatically. The central's shield config (`toucan_left.conf` for
+standalone, `toucan_dongle.conf` for Prospector) enables processing; peripheral
+halves keep forwarding physical positions.
 
 The existing QWERTY, NAV, SYM, ADJ, and TAP layers remain at indices 0–4.
 The left outer thumb (formerly a duplicate SYM key) is now `&bmode BRAILLE`:
@@ -89,13 +90,101 @@ Conventional typing, Studio, display, and pointing remain configured. Software
 verification does not replace physical keyboard/macOS/BLE acceptance, which is
 still pending.
 
+## Optional Prospector dongle
+
+This follows the [official ZMK dongle guide] and the [Prospector module instructions].
+It targets the original **XIAO nRF52840 Prospector**, using the module's pinned
+ZMK v0.3 / Zephyr 3.5 branch, without upgrading this keyboard's ZMK version.
+
+There are two **firmware profiles**, not an automatic runtime fallback:
+
+| Profile | Central (keymap, Braille, trackpad processing, Studio) | Peripherals | Host connection |
+| --- | --- | --- | --- |
+| `standalone` (default, existing behavior) | Toucan left | Toucan right | Left USB or Bluetooth |
+| `prospector` | Prospector | Toucan left and right | Prospector USB (or its Bluetooth profiles) |
+
+**Unplugging the Prospector does not make the peripheral left become a central.**
+ZMK v0.3 fixes split roles at build time. To go without the dongle again, reset
+pairings and reflash the standalone profile below. Both profiles are built by CI;
+all six layers, combos, Braille bindings, and TPS43 gestures share the same sources.
+A third-party Prospector *scanner* firmware is a different architecture, not the
+official dongle integration implemented here.
+
+### Firmware and displays
+
+- Standalone left: `toucan_left rgbled_adapter nice_view_gem` (unchanged filename
+  and Studio USB snippet).
+- Prospector left: `toucan_left_peripheral-zmk.uf2`, built with
+  `toucan_left_peripheral rgbled_adapter nice_view`. Its nice!view shows the
+  upstream peripheral battery/connection screen, not central-only layer/WPM/host
+  widgets. The standalone screen is unchanged.
+- Prospector: `toucan_prospector-zmk.uf2`, built with
+  `toucan_dongle prospector_adapter` and the Studio USB snippet. The LCD shows
+  named layers (`BASE`, `NAV`, `SYM`, `ADJ`, `TAP`, `BRL`), both peripheral batteries
+  and connection status. Open Studio against the **dongle**, not the left half.
+- Right: the existing `toucan_right rgbled_adapter` image is shared by both
+  profiles. Its firmware is identical, but its stored split bond must be reset
+  when changing centrals.
+- Settings reset: the existing XIAO `settings_reset` image works on all three
+  devices. It is destructive: it clears bonds and saved settings/Studio edits.
+
+The dongle uses a mock scanner and the exact same physical layout, matrix
+transform and split-input listener as the standalone central. It has two split
+peripheral slots plus five host profiles. Only the right half runs the TPS43
+hardware driver; only the active central processes Braille and gestures.
+
+Brightness defaults to a fixed 50%, with the optional ambient-light sensor
+**disabled**, so kits without an APDS9960 also work. Change
+`boards/shields/toucan/toucan_dongle.conf` to set
+`CONFIG_PROSPECTOR_FIXED_BRIGHTNESS` (1–100), or set
+`CONFIG_PROSPECTOR_USE_AMBIENT_LIGHT_SENSOR=y` and remove fixed brightness if the
+sensor is installed.
+
+### First setup / switching to Prospector
+
+1. Push the config and wait for a successful CI build. Preview the selection with
+   `scripts/build-and-load --profile prospector --dry-run` (no devices are flashed).
+2. Turn **all three devices off**. With only one connected/powered at a time,
+   flash `scripts/build-and-load reset`, then its normal Prospector-profile image:
+   `scripts/build-and-load --profile prospector dongle` for the Prospector,
+   `scripts/build-and-load --profile prospector left` for the left half, and
+   `scripts/build-and-load --profile prospector right` for the right half.
+   After each device, disconnect/power it off before proceeding to the next.
+   **Reset every device**, not just the former central; a normal firmware update
+   or `BT_CLR` does not reset all split bonds. Save any Studio edits first.
+3. Connect the Prospector to the computer with a **USB data cable**. Power on
+   **left first**, wait for it to connect, then power on right. The Prospector's
+   battery-bar order follows pairing order, so do not pair the right first.
+4. Check typing from both halves, Braille, all trackpad gestures and the LCD's
+   layer/battery indicators. To use Studio, connect it to the Prospector and
+   unlock with the existing ADJ Studio-unlock keys.
+
+Use the physical reset buttons (double-tap) during conversion; the keymap's
+bootloader bindings need a working split connection and target the originating
+keyboard half, **not the dongle**. Mount only the device you intend to flash.
+
+For routine updates *after pairing in Prospector mode*, no settings reset is
+needed: `scripts/build-and-load --profile prospector` flashes dongle, left, right.
+It never resets settings implicitly.
+
+### Returning to standalone
+
+Keep the Prospector disconnected. Reset both halves one at a time (as above),
+then flash `scripts/build-and-load --profile standalone` (or just
+`scripts/build-and-load`): left regains the central role, right pairs to left.
+If connecting directly over Bluetooth, forget the old Toucan host pairing and
+pair it again after the reset. Clear the Prospector's settings too before
+reintroducing it on a later switch to dongle mode.
+
 ## Building and flashing
 
-The existing CI firmware matrix builds both halves and settings reset using ZMK
-v0.3.0. Push these changes and wait for the GitHub Actions build to succeed, then
-use `scripts/build-and-load` to flash **both halves** with the matching V2 images.
-The left image retains the `studio-rpc-usb-uart` snippet. Settings reset is normally
-unnecessary; it clears stored pairing/settings and is not part of a routine upgrade.
+The CI matrix builds standalone left, shared right, Prospector peripheral left,
+Prospector central, and settings reset using ZMK v0.3.0. Push these changes and
+wait for the GitHub Actions build to succeed, then use `scripts/build-and-load`
+to flash the desired profile. With no arguments it still flashes the original
+standalone **left then right**. Both central images retain the
+`studio-rpc-usb-uart` snippet. Settings reset is normally unnecessary for routine
+same-profile updates; it **is required when changing split roles**, as above.
 
 To reach the bootloader using this keymap, hold NAV (`F` or `;`) and SYM (the
 right outer thumb), then press the left or right outer home-row key on ADJ for
@@ -116,16 +205,30 @@ west build -p always -s zmk/app -d build/toucan-right -b seeeduino_xiao_ble \
   -DSHIELD="toucan_right rgbled_adapter"
 west build -p always -s zmk/app -d build/toucan-reset -b seeeduino_xiao_ble \
   -- -DZMK_CONFIG="$REPO/config" -DZMK_EXTRA_MODULES="$REPO" -DSHIELD=settings_reset
-python3 "$REPO/scripts/check-builds.py" build/toucan-left build/toucan-right build/toucan-reset
+
+# Optional Prospector profile (the right image above is shared).
+west build -p always -s zmk/app -d build/toucan-left-peripheral -b seeeduino_xiao_ble \
+  -- -DZMK_CONFIG="$REPO/config" -DZMK_EXTRA_MODULES="$REPO" \
+  -DSHIELD="toucan_left_peripheral rgbled_adapter nice_view"
+west build -p always -s zmk/app -d build/toucan-prospector -b seeeduino_xiao_ble \
+  -S studio-rpc-usb-uart -- -DZMK_CONFIG="$REPO/config" \
+  -DZMK_EXTRA_MODULES="$REPO" -DSHIELD="toucan_dongle prospector_adapter" \
+  -DCONFIG_ZMK_STUDIO=y
+python3 "$REPO/scripts/check-builds.py" build/toucan-left build/toucan-right \
+  build/toucan-reset build/toucan-left-peripheral build/toucan-prospector
 ```
 
 Use the ZMK 3.5 build environment for this pinned release. In the generated
 `.config`, check `CONFIG_INPUT_TPS43=y` on the right and
-`CONFIG_ZMK_FEATURE_BRAILLE=y`, Studio, and smooth scrolling on the left only.
-`scripts/check-builds.py` checks the compiled devices, split-input routing,
-gesture flags, six-layer keymap, Perkins bindings, BASE-only combos, linked
-Braille behaviors, and UF2 output. It also accepts `--braille-mode computer8` for
-test-only override builds; normal firmware stays on `ueb1`.
+`CONFIG_ZMK_FEATURE_BRAILLE=y`, Studio, and smooth scrolling on the **central**
+(standalone left or Prospector), never the peripherals.
+`scripts/check-builds.py` checks the compiled devices, roles, split-input routing,
+gesture flags, six-layer keymap, shared layout, Perkins bindings, BASE-only combos,
+linked Braille behaviors, display selection, dongle connection slots and UF2 output.
+The checker also accepts `--braille-mode computer8` for test-only override builds;
+normal firmware stays on `ueb1`. Run `python3 -m unittest discover -s tests -v`
+for hardware-free flashing-script profile tests (also run by CI); the flasher's
+`--dry-run` downloads/lists images without flashing.
 The Braille module's older smoke checker expects a V1 Pinnacle driver on the
 right and must not be used unchanged for V2.
 Compilation does not verify physical trackpad orientation, gesture feel, BLE,
@@ -147,3 +250,5 @@ SIL Open Font License, Version 1.1.
 
   [The beekeeb Toucan2 Keyboard]: https://beekeeb.com/introducing-toucan2/
   [beekeeb's Toucan2 firmware]: https://github.com/beekeeb/zmk-keyboard-toucan2/tree/6882c95bec5be89988e90feb621f78a7511e9ed7
+  [official ZMK dongle guide]: https://zmk.dev/docs/hardware-integration/dongle
+  [Prospector module instructions]: https://github.com/carrefinho/prospector-zmk-module/tree/77a852293532879c992847e01db27abe4f94fa9f

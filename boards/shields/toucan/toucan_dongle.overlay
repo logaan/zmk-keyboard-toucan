@@ -1,0 +1,20 @@
+#include "toucan.dtsi"
+
+/ {
+    chosen {
+        zmk,kscan = &mock_kscan;
+    };
+
+    mock_kscan: mock_kscan_0 {
+        compatible = "zmk,kscan-mock";
+        columns = <0>;
+        rows = <0>;
+        events = <0>;
+    };
+};
+
+// Receive the TPS43 events directly from the right half, just as the standalone
+// left central does. TAP, NAV/SYM scrolling, zoom and swipes run here.
+&trackpad_listener {
+    status = "okay";
+};

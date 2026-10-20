@@ -1,0 +1,11 @@
+#include "toucan_left.overlay"
+
+// The right half sends input directly to the dongle. The left peripheral has
+// neither a local trackpad to forward nor a central keymap to consume input.
+&trackpad_split {
+    status = "disabled";
+};
+
+&trackpad_listener {
+    status = "disabled";
+};
