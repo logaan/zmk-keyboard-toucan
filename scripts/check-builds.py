@@ -20,6 +20,18 @@ def check_display_geometry(values, dongle=False):
         assert values.get(key) == str(expected), (key, values.get(key), expected)
 
 
+def check_prospector_memory(config):
+    """Allow battery fade layers without exhausting the nRF52840's RAM."""
+    values = dict(line.split("=", 1) for line in config if line.startswith("CONFIG_") and "=" in line)
+    heap = int(values.get("CONFIG_LV_Z_MEM_POOL_SIZE", "0"))
+    buffer = int(values.get("CONFIG_LV_Z_VDB_SIZE", "100"))
+    stack = int(values.get("CONFIG_ZMK_DISPLAY_DEDICATED_THREAD_STACK_SIZE", "0"))
+    assert heap >= 32768, ("Prospector LVGL heap too small for battery animations", heap)
+    assert 1 <= buffer <= 50, ("Prospector draw buffer leaves too little RAM headroom", buffer)
+    assert stack >= 4096, ("Prospector display stack below module recommendation", stack)
+    assert "CONFIG_LV_Z_FULL_REFRESH=y" not in config, "Partial buffer cannot use full-refresh mode"
+
+
 def check(build, braille_mode):
     config = set((build / "zephyr/.config").read_text().splitlines())
     ninja = (build / "build.ninja").read_text()
@@ -71,6 +83,7 @@ def check(build, braille_mode):
     expect(transform + "_P_map_LEN", 42)
     expect(transform + "_P_col_offset", 6 if right else 0)
     if dongle:
+        check_prospector_memory(config)
         assert "CONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS=2" in config
         assert "CONFIG_BT_MAX_CONN=7" in config and "CONFIG_BT_MAX_PAIRED=7" in config
         assert "CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING=y" in config

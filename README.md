@@ -135,6 +135,19 @@ transform and split-input listener as the standalone central. It has two split
 peripheral slots plus five host profiles. Only the right half runs the TPS43
 hardware driver; only the active central processes Braille and gestures.
 
+The Prospector reserves a **32 KiB LVGL heap**, a half-screen draw buffer, and a
+4 KiB display stack. Hardware testing found allocation failures during battery-bar
+fades with the module's default 10 KB heap, matching [this upstream report](https://github.com/carrefinho/prospector-zmk-module/issues/7#issuecomment-3535137446).
+The smaller draw buffer leaves RAM headroom without changing the panel geometry.
+These settings apply only to the dongle; standalone and peripheral displays are
+unchanged.
+
+On the peripheral left's screen, the waves + tick mean a low-level split Bluetooth
+connection, **not** successful encryption or working input to the host. A tick can
+therefore appear during a connection attempt that subsequently fails. The dongle
+also clears a peripheral's reported battery to zero on disconnect; a brief 0%
+reading is not necessarily a discharged battery.
+
 Brightness defaults to a fixed 50%, with the optional ambient-light sensor
 **disabled**, so kits without an APDS9960 also work. Change
 `boards/shields/toucan/toucan_dongle.conf` to set
