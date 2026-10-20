@@ -147,7 +147,14 @@ flash_file() {
 
   say "  Found bootloader drive: $vol"
   say "  Copying $(basename "$uf2") …"
-  cp "$uf2" "$vol"/
+  # The bootloader ejects after receiving the UF2 data. On macOS, copying
+  # extended attributes afterwards can report "Device not configured" even
+  # though the firmware was accepted. Do not copy that metadata.
+  if [ "$(uname -s)" = Darwin ]; then
+    cp -X "$uf2" "$vol"/
+  else
+    cp "$uf2" "$vol"/
+  fi
   sync
   say "  Waiting for the drive to eject (board reboots when done)…"
   while [ -e "$vol/INFO_UF2.TXT" ]; do sleep 0.4; done
