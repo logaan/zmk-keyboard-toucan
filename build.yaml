@@ -28,7 +28,7 @@ include:
   # Prospector mode is additive; the standalone targets above stay unchanged.
   # The right firmware is identical in both modes (reset bonds when switching).
   - board: seeeduino_xiao_ble
-    shield: toucan_left_peripheral rgbled_adapter nice_view
+    shield: toucan_left_peripheral rgbled_adapter nice_view_gem
     artifact-name: toucan_left_peripheral-zmk
   - board: seeeduino_xiao_ble
     shield: toucan_dongle prospector_adapter

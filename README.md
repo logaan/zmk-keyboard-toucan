@@ -115,9 +115,11 @@ official dongle integration implemented here.
 - Standalone left: `toucan_left rgbled_adapter nice_view_gem` (unchanged filename
   and Studio USB snippet).
 - Prospector left: `toucan_left_peripheral-zmk.uf2`, built with
-  `toucan_left_peripheral rgbled_adapter nice_view`. Its nice!view shows the
-  upstream peripheral battery/connection screen, not central-only layer/WPM/host
-  widgets. The standalone screen is unchanged.
+  `toucan_left_peripheral rgbled_adapter nice_view_gem`. It keeps the Toucan's
+  **144×168 panel definition**, with ZMK's built-in peripheral battery/connection
+  screen instead of the central-only layer/WPM/host widgets. Do not substitute
+  the stock `nice_view` shield: its 160×68 geometry causes display corruption.
+  The standalone screen is unchanged.
 - Prospector: `toucan_prospector-zmk.uf2`, built with
   `toucan_dongle prospector_adapter` and the Studio USB snippet. The LCD shows
   named layers (`BASE`, `NAV`, `SYM`, `ADJ`, `TAP`, `BRL`), both peripheral batteries
@@ -209,7 +211,7 @@ west build -p always -s zmk/app -d build/toucan-reset -b seeeduino_xiao_ble \
 # Optional Prospector profile (the right image above is shared).
 west build -p always -s zmk/app -d build/toucan-left-peripheral -b seeeduino_xiao_ble \
   -- -DZMK_CONFIG="$REPO/config" -DZMK_EXTRA_MODULES="$REPO" \
-  -DSHIELD="toucan_left_peripheral rgbled_adapter nice_view"
+  -DSHIELD="toucan_left_peripheral rgbled_adapter nice_view_gem"
 west build -p always -s zmk/app -d build/toucan-prospector -b seeeduino_xiao_ble \
   -S studio-rpc-usb-uart -- -DZMK_CONFIG="$REPO/config" \
   -DZMK_EXTRA_MODULES="$REPO" -DSHIELD="toucan_dongle prospector_adapter" \
@@ -224,7 +226,8 @@ Use the ZMK 3.5 build environment for this pinned release. In the generated
 (standalone left or Prospector), never the peripherals.
 `scripts/check-builds.py` checks the compiled devices, roles, split-input routing,
 gesture flags, six-layer keymap, shared layout, Perkins bindings, BASE-only combos,
-linked Braille behaviors, display selection, dongle connection slots and UF2 output.
+linked Braille behaviors, display selection and panel dimensions, dongle connection
+slots and UF2 output.
 The checker also accepts `--braille-mode computer8` for test-only override builds;
 normal firmware stays on `ueb1`. Run `python3 -m unittest discover -s tests -v`
 for hardware-free flashing-script profile tests (also run by CI); the flasher's

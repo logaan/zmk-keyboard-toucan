@@ -11,6 +11,15 @@ from pathlib import Path
 import re
 
 
+def check_display_geometry(values, dongle=False):
+    """Both Toucan left roles must use the actual panel, not stock nice!view."""
+    display = values["DT_CHOSEN_zephyr_display"]
+    width, height = (240, 280) if dongle else (144, 168)
+    for prop, expected in (("width", width), ("height", height)):
+        key = display + "_P_" + prop
+        assert values.get(key) == str(expected), (key, values.get(key), expected)
+
+
 def check(build, braille_mode):
     config = set((build / "zephyr/.config").read_text().splitlines())
     ninja = (build / "build.ninja").read_text()
@@ -53,6 +62,8 @@ def check(build, braille_mode):
     assert "CONFIG_INPUT_THREAD_STACK_SIZE=2048" in config
     assert ("CONFIG_ZMK_SPLIT_ROLE_CENTRAL=y" in config) == central
     assert ("CONFIG_ZMK_DISPLAY=y" in config) == (not right)
+    if not right:
+        check_display_geometry(values, dongle)
     transform = node("default_transform")
     expect("DT_CHOSEN_zmk_physical_layout", node("default_layout"))
     expect(node("default_layout") + "_P_transform_IDX_0_PH", transform)
@@ -79,8 +90,13 @@ def check(build, braille_mode):
         assert "CONFIG_ZMK_IDLE_TIMEOUT=30000" in config
         assert "CONFIG_ZMK_IDLE_SLEEP_TIMEOUT=3600000" in config
     if left_peripheral:
-        assert "CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM=y" in config
-        assert "nice_view/widgets/peripheral_status.c.obj:" in ninja
+        assert "CONFIG_SHIELD_NICE_VIEW_GEM=y" in config
+        assert "CONFIG_ZMK_DISPLAY_STATUS_SCREEN_BUILT_IN=y" in config
+        assert "CONFIG_NICE_VIEW_WIDGET_STATUS=y" not in config
+        assert "CONFIG_ZMK_WPM=y" not in config
+        assert "CONFIG_ZMK_WIDGET_BATTERY_STATUS=y" in config
+        assert "CONFIG_ZMK_WIDGET_PERIPHERAL_STATUS=y" in config
+        assert "nice_view/widgets/peripheral_status.c.obj:" not in ninja
         assert "nice_view_gem/custom_status_screen.c.obj:" not in ninja, "Central-only screen on a peripheral"
     for index, layer in enumerate(("base", "nav", "sym", "adj", "tap", "braille")):
         expect(f"DT_N_S_keymap_S_{layer}_CHILD_IDX", index)
@@ -146,6 +162,7 @@ def check(build, braille_mode):
         assert "CONFIG_ZMK_DISPLAY=y" in config
         assert "zmk-input-zoom" in ninja
         if left:
+            assert "CONFIG_ZMK_WPM=y" in config
             assert "nice_view_gem/custom_status_screen.c.obj:" in ninja
         link_map = (build / "zephyr/zmk.map").read_text()
         for symbol in ("braille_input_dispatch", "braille_chord_discard",
