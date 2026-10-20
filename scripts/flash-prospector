@@ -1,0 +1,329 @@
+#!/usr/bin/env python3
+"""Guided macOS UF2 flashing for the Prospector + Toucan Operator profile.
+
+Run without arguments for the wizard. It never writes or resets settings until
+confirmed. Enter s at any reset/firmware prompt to skip that step when resuming.
+--dry-run validates the local bundle without accessing USB devices.
+--prepare-from BUILD_ROOT packages already-built, up-to-date west builds named
+prospector, left-peripheral, right, and reset (or their README's toucan-* names).
+"""
+
+import argparse
+import errno
+import hashlib
+import json
+from pathlib import Path
+import platform
+import re
+import runpy
+import shutil
+import struct
+import subprocess
+import sys
+import time
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_BUNDLE = ROOT / ".firmware/prospector-operator"
+VOLUMES = Path("/Volumes")
+BUILDS = {"dongle": ("prospector", "toucan-prospector"),
+          "left": ("left-peripheral", "toucan-left-peripheral"),
+          "right": ("right", "toucan-right"), "reset": ("reset", "toucan-reset")}
+FILENAMES = {"dongle": "toucan_prospector-zmk.uf2", "left": "toucan_left_peripheral-zmk.uf2",
+             "right": "toucan_right-zmk.uf2", "reset": "settings_reset-zmk.uf2"}
+LABELS = {"dongle": "PROSPECTOR dongle (central / Operator)",
+          "left": "LEFT half (peripheral)", "right": "RIGHT half (peripheral / trackpad)"}
+
+
+def sha256(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def source_fingerprint():
+    """Ignore docs/generated drawings, but catch stale firmware after config edits."""
+    files = [ROOT / "config/west.yml", ROOT / "config/toucan.keymap", ROOT / "zephyr/module.yml"]
+    files += [p for p in (ROOT / "boards").rglob("*") if p.is_file() and p.suffix != ".md"]
+    digest = hashlib.sha256()
+    for path in sorted(files):
+        digest.update(str(path.relative_to(ROOT)).encode() + b"\0" + path.read_bytes() + b"\0")
+    return digest.hexdigest()
+
+
+def validate_uf2(data):
+    """Reject truncated/incomplete images and firmware for another MCU family."""
+    if not data or len(data) % 512:
+        raise ValueError("Invalid/truncated UF2 image")
+    count = len(data) // 512
+    seen = set()
+    for offset in range(0, len(data), 512):
+        magic1, magic2, flags, address, size, block, total, family = struct.unpack_from("<8I", data, offset)
+        end_magic = struct.unpack_from("<I", data, offset + 508)[0]
+        if (magic1, magic2, end_magic) != (0x0A324655, 0x9E5D5157, 0x0AB16F30):
+            raise ValueError("Invalid UF2 block magic")
+        if flags != 0x2000 or family != 0xADA52840:
+            raise ValueError("Not nRF52840 flash firmware")
+        if not 0 < size <= 476 or total != count or block >= count or block in seen:
+            raise ValueError("Invalid, duplicate, or missing UF2 blocks")
+        if address < 0x27000 or address + size > 0xF8000:
+            raise ValueError("UF2 writes outside the XIAO application partition")
+        seen.add(block)
+
+
+def prepare_bundle(build_root, destination):
+    """Check compiled roles/layouts before exporting one matching set of images."""
+    check = runpy.run_path(str(ROOT / "scripts/check-builds.py"))["check"]
+    selected = {}
+    versions = set()
+    for device, names in BUILDS.items():
+        candidates = [build_root / name for name in names if (build_root / name).is_dir()]
+        if len(candidates) != 1:
+            raise ValueError(f"Expected exactly one build directory for {device}: {names}")
+        build = candidates[0]
+        check(build, "ueb1")
+        config = set((build / "zephyr/.config").read_text().splitlines())
+        if device == "dongle" and "CONFIG_PROSPECTOR_STATUS_SCREEN_OPERATOR=y" not in config:
+            raise ValueError("The dongle build is not using the Operator display")
+        generated = build / "zephyr/include/generated/zephyr"
+        kernel = (generated / "version.h").read_text()
+        if not re.search(r"#define KERNEL_VERSION_STRING\s+\"4\.1\.0\"", kernel):
+            raise ValueError("Expected Zephyr 4.1.0 firmware")
+        versions.add((kernel, (generated / "app_version.h").read_text()))
+        image = build / "zephyr/zmk.uf2"
+        validate_uf2(image.read_bytes())
+        selected[device] = image
+    if len(versions) != 1:
+        raise ValueError("Builds do not share the same ZMK/Zephyr versions")
+    destination.mkdir(parents=True, exist_ok=True)
+    images = {}
+    for device, source in selected.items():
+        name = FILENAMES[device]
+        shutil.copyfile(source, destination / name)
+        images[device] = {"file": name, "sha256": sha256((destination / name).read_bytes())}
+    manifest = {"format": 1, "profile": "prospector", "display": "operator",
+                "source_sha256": source_fingerprint(), "images": images}
+    (destination / "bundle.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    print(f"\nPrepared matching Operator firmware: {destination}")
+
+
+def checked_image(bundle, entry):
+    image = bundle / entry["file"]
+    if image.parent.resolve() != bundle.resolve() or image.suffix != ".uf2":
+        raise ValueError("Unsafe image path in bundle")
+    data = image.read_bytes()
+    if sha256(data) != entry["sha256"]:
+        raise ValueError(f"Firmware checksum mismatch: {image.name}")
+    validate_uf2(data)
+    return image
+
+
+def load_bundle(bundle):
+    manifest = json.loads((bundle / "bundle.json").read_text())
+    if (manifest["format"], manifest["profile"], manifest["display"]) != (1, "prospector", "operator"):
+        raise ValueError("This wizard requires a Prospector / Operator firmware bundle")
+    if manifest["source_sha256"] != source_fingerprint():
+        raise ValueError("Firmware sources changed since this bundle was built. Rebuild/repackage first.")
+    for device, name in FILENAMES.items():
+        if manifest["images"][device]["file"] != name:
+            raise ValueError(f"Wrong image selected for {device}")
+        checked_image(bundle, manifest["images"][device])
+    return manifest
+
+
+def bootloader_present(volume):
+    """The UF2 drive can vanish without a clean unmount as soon as data is accepted."""
+    try:
+        return (volume / "INFO_UF2.TXT").is_file()
+    except OSError as error:
+        if error.errno in (errno.ENOENT, errno.ENODEV, errno.ENXIO, errno.EIO):
+            return False
+        raise
+
+
+def find_bootloader(root=None):
+    root = VOLUMES if root is None else root
+    candidates = sorted(p for p in root.iterdir() if bootloader_present(p))
+    if len(candidates) > 1:
+        raise ValueError("More than one UF2 drive is mounted. Disconnect all but the intended device.")
+    if not candidates:
+        return None
+    volume = candidates[0]
+    info = (volume / "INFO_UF2.TXT").read_text(errors="replace")
+    match = re.search(r"^Board-ID:\s*(.+)$", info, re.MULTILINE)
+    board = match[1].strip() if match else "unknown"
+    normalized = re.sub(r"[^a-z0-9]", "", board.lower())
+    if "xiao" not in normalized or "nrf52840" not in normalized:
+        raise ValueError(f"Refusing a non-XIAO nRF52840 bootloader: {board}")
+    return volume, board
+
+
+def ask(message):
+    answer = input(message).strip()
+    if answer.lower() == "q":
+        raise KeyboardInterrupt
+    return answer
+
+
+def confirm(message, expected, allow_skip=False):
+    while True:
+        answer = ask(message)
+        if answer == expected:
+            return True
+        if allow_skip and answer.lower() in ("s", "skip"):
+            return False
+        action = f"Type {expected!r}" if expected else "Press Enter"
+        skip = ", s to skip this step" if allow_skip else ""
+        print(f"{action} to continue{skip}, or q to quit. Nothing written.")
+
+
+def wait_for_bootloader(timeout=180):
+    print("Waiting for the bootloader drive (double-tap reset; Ctrl-C cancels)...", flush=True)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        found = find_bootloader()
+        if found:
+            return found
+        time.sleep(0.3)
+    raise TimeoutError("No bootloader appeared. Check the USB data cable and double-tap reset; rerun to retry.")
+
+
+def copy_uf2(image, volume):
+    # -X avoids metadata writes, but even fcopyfile/close can fail when the board
+    # reboots immediately after accepting UF2. A vanished drive is expected;
+    # a copy error with the bootloader still present is NOT safe to ignore.
+    command = ["cp"] + (["-X"] if platform.system() == "Darwin" else [])
+    transfer_error = None
+    try:
+        subprocess.run(command + [str(image), str(volume / "firmware.uf2")],
+                       check=True, capture_output=True, text=True, timeout=60)
+        if bootloader_present(volume):
+            subprocess.run(["sync"], check=True, capture_output=True, text=True, timeout=30)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        transfer_error = error
+    deadline = time.monotonic() + 30
+    while bootloader_present(volume):
+        if time.monotonic() >= deadline:
+            if transfer_error is not None:
+                detail = transfer_error.stderr or str(transfer_error)
+                if isinstance(detail, bytes):  # TimeoutExpired may retain bytes even with text=True.
+                    detail = detail.decode(errors="replace")
+                raise OSError(f"Firmware transfer failed; bootloader is still mounted:\n{detail.strip()}") from transfer_error
+            raise TimeoutError("Copy finished but the bootloader did not disconnect. Stop and inspect the device.")
+        time.sleep(0.3)
+    if transfer_error is not None:
+        print("  Bootloader auto-disconnected during the write; ignoring the expected copy/sync error.")
+
+
+def flash(bundle, manifest, device, reset=False):
+    kind = "SETTINGS RESET (erases bonds and saved settings)" if reset else "Operator-profile firmware"
+    print(f"\n  {LABELS[device]}: {kind}")
+    print("  Connect ONLY this device by USB; keep the other two OFF.")
+    if not confirm("  Double-tap its physical reset button, then press Enter (s skips this step, q quits): ",
+                   "", allow_skip=True):
+        print(f"  [SKIPPED] {kind}. Nothing written.")
+        return False
+    volume, board = wait_for_bootloader()
+    print(f"  Drive: {volume}\n  Board: {board}")
+    print("  All three devices look identical to the computer. Check the physical device!")
+    if not confirm(f"  Type {device!r} to flash this device (s skips this step, q quits): ",
+                   device, allow_skip=True):
+        print(f"  [SKIPPED] {kind}. Nothing written.")
+        return False
+    if find_bootloader() != (volume, board):
+        raise ValueError("Bootloader changed while confirming. Nothing written; please retry.")
+    entry = manifest["images"]["reset" if reset else device]
+    image = checked_image(bundle, entry)
+    print(f"  Writing {image.name} ...", flush=True)
+    copy_uf2(image, volume)
+    print("  [OK] Bootloader disconnected after write (expected). Runtime is not yet verified.")
+    if reset:
+        print("  Let settings-reset run for five seconds before entering the bootloader again...", flush=True)
+        time.sleep(5)
+    return True
+
+
+def wizard(bundle, manifest):
+    print("\n" + "=" * 68)
+    print("  PROSPECTOR + TOUCAN  |  OPERATOR DISPLAY  |  Zephyr 4.1")
+    print("=" * 68)
+    print(f"Bundle: {bundle}\nAll four firmware images and checksums verified.")
+    print("\nUse your Mac/another keyboard while flashing. q or Ctrl-C cancels.")
+    print("Enter s (or skip) at any reset/firmware prompt to skip just that write.")
+    print("To resume, choose the same mode and skip steps already completed with this bundle.")
+    print("  1  Clean setup / re-pair (recommended for switching centrals or fixing bonds)")
+    print("     Erases settings on ALL THREE devices, then flashes matching firmware.")
+    print("  2  Update an already-paired Prospector set (preserves settings)")
+    print("  q  Quit without writing anything")
+    mode = ask("\nChoose 1, 2, or q: ")
+    while mode not in ("1", "2"):
+        mode = ask("Choose 1, 2, or q: ")
+    if mode == "1":
+        print("\nWARNING: each settings reset erases that device's split/host bonds and saved Studio edits.")
+        confirm("Type ERASE to enable settings resets (individual steps can be skipped; q quits): ", "ERASE")
+    print("\nTurn OFF and disconnect all three devices before proceeding.")
+    ask("Press Enter when ready (q quits): ")
+    written = 0
+    skipped = []
+    for index, device in enumerate(LABELS, 1):
+        print(f"\n{'-' * 68}\n[{index}/3] {LABELS[device]}")
+        wrote_device = False
+        for reset in ((True, False) if mode == "1" else (False,)):
+            if flash(bundle, manifest, device, reset=reset):
+                written += 1
+                wrote_device = True
+            else:
+                skipped.append(f"{device} {'settings reset' if reset else 'firmware'}")
+        # A skip at the device-name confirmation can leave a bootloader mounted.
+        if wrote_device or find_bootloader() is not None:
+            ask(f"\nDisconnect and power OFF the {device}; then press Enter (q quits): ")
+            if find_bootloader() is not None:
+                raise ValueError("A bootloader is still connected. Disconnect it before continuing.")
+    print("\n" + "=" * 68 + f"\nFLASHING STEPS FINISHED — {written} written, {len(skipped)} skipped.")
+    if skipped:
+        print("Skipped: " + ", ".join(skipped))
+        print("Skipped steps were NOT verified. Only proceed if that work was already completed.")
+    print("\nNow connect/pair in this order:\n")
+    print("  1. Keep both halves OFF. Connect Prospector with a USB DATA cable.")
+    print("     Wait for the Operator screen to appear.")
+    print("  2. Power on LEFT first. Wait for its battery/connection to appear.")
+    print("  3. Power on RIGHT. Check typing from BOTH halves and trackpad gestures.")
+    print("  4. Check layer/modifier/battery indicators. Open Studio on the DONGLE.")
+    print("\nA connection icon alone is not proof of working encrypted input.")
+    print("If one half connects but does not type, reset/restart that half.")
+    print("Unplugging the dongle does not switch the left half back to standalone.\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--firmware-dir", type=Path, default=DEFAULT_BUNDLE)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--prepare-from", type=Path, metavar="BUILD_ROOT")
+    mode.add_argument("--dry-run", action="store_true", help="validate/list images; no prompts or device access")
+    args = parser.parse_args()
+    try:
+        bundle = args.firmware_dir.resolve()
+        if args.prepare_from:
+            prepare_bundle(args.prepare_from.resolve(), bundle)
+            return 0
+        manifest = load_bundle(bundle)
+        if args.dry_run:
+            print("Verified Prospector / Operator bundle:")
+            for device, entry in manifest["images"].items():
+                print(f"  {device:6}  {entry['file']}  sha256:{entry['sha256'][:12]}")
+            print("Dry run: no devices accessed or flashed.")
+            return 0
+        if not sys.stdin.isatty():
+            raise ValueError("Interactive terminal required. Use --dry-run to validate without flashing.")
+        wizard(bundle, manifest)
+        return 0
+    except (KeyboardInterrupt, EOFError):
+        print("\nCancelled. Previously completed flashes/resets are not undone.")
+        return 130
+    except (OSError, ValueError, KeyError, AssertionError, subprocess.SubprocessError) as error:
+        print(f"\nERROR: {error}", file=sys.stderr)
+        print("Stopped. No further devices will be flashed. Fix the issue, then rerun.", file=sys.stderr)
+        print("Choose the same mode and enter s at reset/firmware prompts to skip completed steps.", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
