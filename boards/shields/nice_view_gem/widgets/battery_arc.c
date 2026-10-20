@@ -29,7 +29,7 @@ static void draw_dot(lv_obj_t *canvas, int cx, int cy, int r, bool filled)
 
     dsc.radius = r;
 
-    lv_canvas_draw_rect(canvas, cx - r, cy - r, r * 2, r * 2, &dsc);
+    canvas_draw_rect(canvas, cx - r, cy - r, r * 2, r * 2, &dsc);
 }
 
 static void draw_battery_arc(lv_obj_t *canvas, const lv_point_t *dots, uint8_t level, bool blink_enabled)
@@ -48,13 +48,13 @@ static void draw_battery_labels(lv_obj_t *canvas, uint8_t level)
 
     lv_draw_label_dsc_t label_dsc;
     init_label_dsc(&label_dsc, LVGL_FOREGROUND, &quinquefive_12, LV_TEXT_ALIGN_CENTER);
-    lv_canvas_draw_text(canvas, 9, 31, 56, &label_dsc, "L");
+    canvas_draw_text(canvas, 9, 31, 56, &label_dsc, "L");
 
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", level);
     lv_draw_label_dsc_t label_dsc_txt;
     init_label_dsc(&label_dsc_txt, LVGL_FOREGROUND, &quinquefive_8, LV_TEXT_ALIGN_CENTER);
-    lv_canvas_draw_text(canvas, 9, 45, 56, &label_dsc_txt, buf);
+    canvas_draw_text(canvas, 9, 45, 56, &label_dsc_txt, buf);
 }
 
 void draw_battery_status(lv_obj_t *canvas, const struct status_state *state) {

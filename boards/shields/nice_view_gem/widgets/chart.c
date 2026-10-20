@@ -38,7 +38,7 @@ static void draw_square(lv_obj_t *canvas, int col, int row, bool filled)
         dsc.bg_opa       = LV_OPA_COVER;
         dsc.border_width = 0;
         dsc.radius       = 1;
-        lv_canvas_draw_rect(canvas, x, y, CHART_SQ, CHART_SQ, &dsc);
+        canvas_draw_rect(canvas, x, y, CHART_SQ, CHART_SQ, &dsc);
     }
 }
 

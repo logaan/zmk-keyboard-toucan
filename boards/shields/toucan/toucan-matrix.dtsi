@@ -1,5 +1,12 @@
 // Only the keyboard halves scan GPIOs. The dongle shares toucan.dtsi's layout
 // and input processing, but must leave these pins free for the Prospector.
+
+// Matrix columns use the nRF52840 NFC pins P0.09/P0.10. Zephyr 4.1 moves
+// this setup from the old NFCT_PINS_AS_GPIOS Kconfig symbol to devicetree.
+&uicr {
+    nfct-pins-as-gpios;
+};
+
 / {
     chosen {
         zmk,kscan = &kscan0;

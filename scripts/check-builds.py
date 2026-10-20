@@ -20,22 +20,31 @@ def check_display_geometry(values, dongle=False):
         assert values.get(key) == str(expected), (key, values.get(key), expected)
 
 
+def check_prospector_clock(config):
+    """Do not understate the tested XIAO central's sleep-clock accuracy."""
+    required = {"CONFIG_CLOCK_CONTROL_NRF_K32SRC_500PPM=y",
+                "CONFIG_CLOCK_CONTROL_NRF_ACCURACY=500"}
+    assert required <= config, ("Prospector must declare 500 ppm LF accuracy", required - config)
+
+
 def check_prospector_memory(config):
     """Allow battery fade layers without exhausting the nRF52840's RAM."""
     values = dict(line.split("=", 1) for line in config if line.startswith("CONFIG_") and "=" in line)
     heap = int(values.get("CONFIG_LV_Z_MEM_POOL_SIZE", "0"))
     buffer = int(values.get("CONFIG_LV_Z_VDB_SIZE", "100"))
     stack = int(values.get("CONFIG_ZMK_DISPLAY_DEDICATED_THREAD_STACK_SIZE", "0"))
+    buffers = 2 if "CONFIG_LV_Z_DOUBLE_VDB=y" in config else 1
     assert heap >= 32768, ("Prospector LVGL heap too small for battery animations", heap)
-    assert 1 <= buffer <= 50, ("Prospector draw buffer leaves too little RAM headroom", buffer)
-    assert stack >= 4096, ("Prospector display stack below module recommendation", stack)
+    assert 1 <= buffer and buffer * buffers <= 50, (
+        "Prospector draw buffers leave too little RAM headroom", buffer, buffers)
+    assert stack >= 8192, ("Prospector display stack below module recommendation", stack)
     assert "CONFIG_LV_Z_FULL_REFRESH=y" not in config, "Partial buffer cannot use full-refresh mode"
 
 
 def check(build, braille_mode):
     config = set((build / "zephyr/.config").read_text().splitlines())
     ninja = (build / "build.ninja").read_text()
-    header = (build / "zephyr/include/generated/devicetree_generated.h").read_text()
+    header = (build / "zephyr/include/generated/zephyr/devicetree_generated.h").read_text()
     values = dict(re.findall(r"^#define (\S+)[ \t]+(.+)$", header, re.MULTILINE))
     left = "CONFIG_SHIELD_TOUCAN_LEFT=y" in config
     left_peripheral = "CONFIG_SHIELD_TOUCAN_LEFT_PERIPHERAL=y" in config
@@ -45,6 +54,7 @@ def check(build, braille_mode):
     assert sum((left, left_peripheral, right, dongle, reset)) == 1, "Not a Toucan/reset build"
     central = left or dongle
     assert (build / "zephyr/zmk.uf2").stat().st_size > 0, "Missing UF2"
+    assert "CONFIG_ZMK_BOARD_COMPAT=y" in config, "Use the xiao_ble//zmk board variant"
     assert "input_pinnacle.c.obj" not in ninja, "V1 driver is still present"
 
     def expect(key, expected):
@@ -83,7 +93,11 @@ def check(build, braille_mode):
     expect(transform + "_P_map_LEN", 42)
     expect(transform + "_P_col_offset", 6 if right else 0)
     if dongle:
+        check_prospector_clock(config)
         check_prospector_memory(config)
+        layouts = ("CLASSIC", "RADII", "FIELD", "OPERATOR")
+        assert sum(f"CONFIG_PROSPECTOR_STATUS_SCREEN_{layout}=y" in config
+                   for layout in layouts) == 1, "Select exactly one new Prospector screen layout"
         assert "CONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS=2" in config
         assert "CONFIG_BT_MAX_CONN=7" in config and "CONFIG_BT_MAX_PAIRED=7" in config
         assert "CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING=y" in config
@@ -99,6 +113,7 @@ def check(build, braille_mode):
         assert "nice_view_gem/custom_status_screen.c.obj:" not in ninja
     else:
         expect("DT_CHOSEN_zmk_kscan", node("kscan0"))
+        expect(node("uicr") + "_P_nfct_pins_as_gpios", 1)
         assert "CONFIG_ZMK_SLEEP=y" in config
         assert "CONFIG_ZMK_IDLE_TIMEOUT=30000" in config
         assert "CONFIG_ZMK_IDLE_SLEEP_TIMEOUT=3600000" in config

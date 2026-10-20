@@ -19,21 +19,21 @@
 #
 ---
 include:
-  - board: seeeduino_xiao_ble
+  - board: xiao_ble//zmk
     shield: toucan_left rgbled_adapter nice_view_gem
     snippet: studio-rpc-usb-uart
     cmake-args: -DCONFIG_ZMK_STUDIO=y
-  - board: seeeduino_xiao_ble
+  - board: xiao_ble//zmk
     shield: toucan_right rgbled_adapter
-  # Prospector mode is additive; the standalone targets above stay unchanged.
-  # The right firmware is identical in both modes (reset bonds when switching).
-  - board: seeeduino_xiao_ble
+  # Build both fixed-role profiles. The right image above is shared
+  # (reset bonds when switching profiles).
+  - board: xiao_ble//zmk
     shield: toucan_left_peripheral rgbled_adapter nice_view_gem
     artifact-name: toucan_left_peripheral-zmk
-  - board: seeeduino_xiao_ble
+  - board: xiao_ble//zmk
     shield: toucan_dongle prospector_adapter
     snippet: studio-rpc-usb-uart
     cmake-args: -DCONFIG_ZMK_STUDIO=y
     artifact-name: toucan_prospector-zmk
-  - board: seeeduino_xiao_ble
+  - board: xiao_ble//zmk
     shield: settings_reset

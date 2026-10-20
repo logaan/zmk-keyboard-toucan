@@ -1,6 +1,4 @@
 manifest:
-  defaults:
-    revision: v0.3
   remotes:
     - name: zmkfirmware
       url-base: https://github.com/zmkfirmware
@@ -15,13 +13,13 @@ manifest:
   projects:
     - name: zmk
       remote: zmkfirmware
-      # Latest release verified via GitHub releases/latest on 2026-10-18.
-      # v0.3.0 = edf5c0814fd3ea202e43aad2d68fd32e882a518c
-      revision: v0.3.0
+      # main snapshot using Zephyr 4.1 (required by Prospector's new screens).
+      revision: 4dd95d7840eb3d5a3f59bb29fbf1ab054715ef85
       import: app/west.yml
     - name: zmk-rgbled-widget
       remote: caksoylar
-      revision: v0.3
+      # main: updated endpoint API and xiao_ble//zmk board overlay.
+      revision: e6b467792a1dabef8cfa5c9fd26bfefc9c16662b
     - name: zmk_driver_azoteq
       remote: beekeeb
       # Toucan2 TPS43 driver, pinned at main's tip for throttled
@@ -33,8 +31,8 @@ manifest:
       revision: 91bbe0c0e02145da50c9df798489479d28be1804
     - name: prospector-zmk-module
       remote: carrefinho
-      # main targets ZMK v0.3 / Zephyr 3.5, unlike feat/new-status-screens.
-      revision: 77a852293532879c992847e01db27abe4f94fa9f
+      # feat/new-status-screens, matching the supplied vendor checkout.
+      revision: ed98221f3b52b7066dbb10ba3af8a29150b93a5a
     - name: zmk-braille-module
       url: https://github.com/logaan/zmk-braille-module
       # Published module snapshot: contextual UEB Grade 1, Computer8 and

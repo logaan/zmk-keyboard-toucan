@@ -13,7 +13,7 @@ static void draw_filled_rect(lv_obj_t *canvas, int x, int y, int w, int h, lv_co
     dsc.bg_color = color;
     dsc.border_width = 0;
     dsc.radius = 0;
-    lv_canvas_draw_rect(canvas, x, y, w, h, &dsc);
+    canvas_draw_rect(canvas, x, y, w, h, &dsc);
 }
 
 static void draw_outlined_rect(lv_obj_t *canvas, int x, int y, int w, int h,
@@ -24,7 +24,7 @@ static void draw_outlined_rect(lv_obj_t *canvas, int x, int y, int w, int h,
     dsc.border_color = border;
     dsc.border_width = border_w;
     dsc.radius     = 2;
-    lv_canvas_draw_rect(canvas, x, y, w, h, &dsc);
+    canvas_draw_rect(canvas, x, y, w, h, &dsc);
 }
 
 void draw_profile_status(lv_obj_t *canvas, const struct status_state *state) {

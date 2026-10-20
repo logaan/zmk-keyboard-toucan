@@ -6,6 +6,13 @@
 #define SCREEN_WIDTH 144
 #define SCREEN_HEIGHT 168
 
+// LVGL 9's lv_color_t is always RGB888. Use an explicit one-byte canvas,
+// independent of the display's 1-bit output format, to keep RAM bounded.
+#define CANVAS_COLOR_FORMAT LV_COLOR_FORMAT_L8
+#define CANVAS_BUF_SIZE \
+    LV_CANVAS_BUF_SIZE(SCREEN_WIDTH, SCREEN_HEIGHT, \
+                       LV_COLOR_FORMAT_GET_BPP(CANVAS_COLOR_FORMAT), LV_DRAW_BUF_STRIDE_ALIGN)
+
 #define BUFFER_SIZE 168
 #define BUFFER_OFFSET_MIDDLE 0
 #define BUFFER_OFFSET_BOTTOM 0
@@ -30,6 +37,13 @@ struct status_state {
     bool connected;
 #endif
 };
+
+void canvas_draw_rect(lv_obj_t *canvas, int32_t x, int32_t y, int32_t w, int32_t h,
+                      lv_draw_rect_dsc_t *draw_dsc);
+void canvas_draw_text(lv_obj_t *canvas, int32_t x, int32_t y, int32_t max_w,
+                      lv_draw_label_dsc_t *draw_dsc, const char *text);
+void canvas_draw_img(lv_obj_t *canvas, int32_t x, int32_t y, const lv_image_dsc_t *src,
+                     lv_draw_image_dsc_t *draw_dsc);
 
 void to_uppercase(char *str);
 void fill_background(lv_obj_t *canvas);

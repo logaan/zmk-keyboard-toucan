@@ -109,12 +109,12 @@ static const uint8_t sleep_icon_map[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-static const lv_img_dsc_t sleep_icon = {
-    .header.cf = LV_IMG_CF_INDEXED_1BIT,
-    .header.always_zero = 0,
-    .header.reserved = 0,
+static const lv_image_dsc_t sleep_icon = {
+    .header.magic = LV_IMAGE_HEADER_MAGIC,
+    .header.cf = LV_COLOR_FORMAT_I1,
     .header.w = 96,
     .header.h = 96,
+    .header.stride = 12,
     .data_size = 1160,
     .data = sleep_icon_map,
 };
@@ -129,14 +129,14 @@ void set_sleep_screen_active(bool active) {
 
 void draw_sleep_screen(lv_obj_t *canvas) {
     // Draw the sleep icon centered horizontally, near top of screen
-    lv_draw_img_dsc_t img_dsc;
-    lv_draw_img_dsc_init(&img_dsc);
+    lv_draw_image_dsc_t img_dsc;
+    lv_draw_image_dsc_init(&img_dsc);
     // Center the 96px icon on the 144px wide screen: (144-96)/2 = 24
     // Draw it a bit down from the top: y=32
-    lv_canvas_draw_img(canvas, 24, 32, &sleep_icon, &img_dsc);
+    canvas_draw_img(canvas, 24, 32, &sleep_icon, &img_dsc);
 
     // Show "SLEEP" in small text below the icon
     lv_draw_label_dsc_t label_dsc;
     init_label_dsc(&label_dsc, LVGL_FOREGROUND, &quinquefive_8, LV_TEXT_ALIGN_LEFT);
-    lv_canvas_draw_text(canvas, 12, 140, SCREEN_WIDTH-8, &label_dsc, "SLEEP");
+    canvas_draw_text(canvas, 12, 140, SCREEN_WIDTH-8, &label_dsc, "SLEEP");
 }

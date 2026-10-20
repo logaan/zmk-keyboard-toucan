@@ -4,6 +4,29 @@
 with a display and a multi-touch trackpad. This config targets a V1 upgraded with
 the **V2 thumb-aligned trackpad kit**, not the original round Cirque trackpad.
 
+## Firmware versions
+
+`config/west.yml` pins a ZMK `main` snapshot
+[`4dd95d7840eb3d5a3f59bb29fbf1ab054715ef85`](https://github.com/zmkfirmware/zmk/commit/4dd95d7840eb3d5a3f59bb29fbf1ab054715ef85)
+using **Zephyr 4.1** and LVGL 9.3. The CI reusable workflow uses the same ZMK
+revision and its `zmkfirmware/zmk-build-arm:stable` environment. “4.1” is the
+**Zephyr version**, not a ZMK release number; this replaces ZMK v0.3.0 / Zephyr 3.5.
+All five build targets now use **`xiao_ble//zmk`**, replacing `seeeduino_xiao_ble`.
+
+Prospector is pinned to the supplied `feat/new-status-screens` checkout at
+[`ed98221f3b52b7066dbb10ba3af8a29150b93a5a`](https://github.com/carrefinho/prospector-zmk-module/commit/ed98221f3b52b7066dbb10ba3af8a29150b93a5a).
+This upstream branch is a work in progress; both development snapshots are pinned
+instead of silently following branch updates. The RGB LED module is also updated to a
+Zephyr 4.1-compatible snapshot for the new board name and endpoint API.
+Toucan's own display keeps its layouts and 144×168 geometry, with LVGL 9 canvas
+helpers, image descriptors, and an explicit one-byte-per-pixel canvas buffer.
+The halves also explicitly enable P0.09/P0.10 as GPIOs in devicetree, replacing
+the old board's NFC-pin Kconfig default.
+
+Rebuild and reflash **every device in the selected profile** when upgrading from
+the older Zephyr 3.5 firmware; do not mix old and new split firmware. Hardware
+acceptance (BLE, displays, gestures, sleep/wake) is still required after flashing.
+
 ## Toucan2 hardware and gestures
 
 Hardware and display support are based on [beekeeb's Toucan2 firmware] at
@@ -50,7 +73,7 @@ Hardware defaults live in the shield `.conf` files; the redundant, broken
 
 ## Pinned Braille input
 
-`config/west.yml` pins ZMK v0.3.0 and `zmk-braille-module` at
+`config/west.yml` also pins `zmk-braille-module` at
 [`86a25867cf27f6d2d7b25e8ef17066d91c202e2a`](https://github.com/logaan/zmk-braille-module/commit/86a25867cf27f6d2d7b25e8ef17066d91c202e2a),
 the latest pushed `main` snapshot when this pin was updated. West discovers the
 module automatically. The central's shield config (`toucan_left.conf` for
@@ -93,8 +116,8 @@ still pending.
 ## Optional Prospector dongle
 
 This follows the [official ZMK dongle guide] and the [Prospector module instructions].
-It targets the original **XIAO nRF52840 Prospector**, using the module's pinned
-ZMK v0.3 / Zephyr 3.5 branch, without upgrading this keyboard's ZMK version.
+It targets the original **XIAO nRF52840 Prospector**, using the pinned
+`feat/new-status-screens` branch snapshot and Zephyr 4.1 ZMK described above.
 
 There are two **firmware profiles**, not an automatic runtime fallback:
 
@@ -104,7 +127,7 @@ There are two **firmware profiles**, not an automatic runtime fallback:
 | `prospector` | Prospector | Toucan left and right | Prospector USB (or its Bluetooth profiles) |
 
 **Unplugging the Prospector does not make the peripheral left become a central.**
-ZMK v0.3 fixes split roles at build time. To go without the dongle again, reset
+ZMK fixes split roles at build time. To go without the dongle again, reset
 pairings and reflash the standalone profile below. Both profiles are built by CI;
 all six layers, combos, Braille bindings, and TPS43 gestures share the same sources.
 A third-party Prospector *scanner* firmware is a different architecture, not the
@@ -112,22 +135,23 @@ official dongle integration implemented here.
 
 ### Firmware and displays
 
-- Standalone left: `toucan_left rgbled_adapter nice_view_gem` (unchanged filename
-  and Studio USB snippet).
+- Standalone left: `toucan_left rgbled_adapter nice_view_gem`, retaining the
+  Studio USB snippet. Default CI artifact names now contain `xiao_ble__zmk`;
+  `scripts/build-and-load` accepts both new and legacy board-qualified names.
 - Prospector left: `toucan_left_peripheral-zmk.uf2`, built with
   `toucan_left_peripheral rgbled_adapter nice_view_gem`. It keeps the Toucan's
   **144×168 panel definition**, with ZMK's built-in peripheral battery/connection
   screen instead of the central-only layer/WPM/host widgets. Do not substitute
   the stock `nice_view` shield: its 160×68 geometry causes display corruption.
-  The standalone screen is unchanged.
+  The standalone screen retains its existing layout.
 - Prospector: `toucan_prospector-zmk.uf2`, built with
   `toucan_dongle prospector_adapter` and the Studio USB snippet. The LCD shows
   named layers (`BASE`, `NAV`, `SYM`, `ADJ`, `TAP`, `BRL`), both peripheral batteries
   and connection status. Open Studio against the **dongle**, not the left half.
-- Right: the existing `toucan_right rgbled_adapter` image is shared by both
+- Right: the `toucan_right rgbled_adapter` image is shared by both
   profiles. Its firmware is identical, but its stored split bond must be reset
   when changing centrals.
-- Settings reset: the existing XIAO `settings_reset` image works on all three
+- Settings reset: the XIAO `settings_reset` image works on all three
   devices. It is destructive: it clears bonds and saved settings/Studio edits.
 
 The dongle uses a mock scanner and the exact same physical layout, matrix
@@ -135,12 +159,34 @@ transform and split-input listener as the standalone central. It has two split
 peripheral slots plus five host profiles. Only the right half runs the TPS43
 hardware driver; only the active central processes Braille and gestures.
 
-The Prospector reserves a **32 KiB LVGL heap**, a half-screen draw buffer, and a
-4 KiB display stack. Hardware testing found allocation failures during battery-bar
-fades with the module's default 10 KB heap, matching [this upstream report](https://github.com/carrefinho/prospector-zmk-module/issues/7#issuecomment-3535137446).
-The smaller draw buffer leaves RAM headroom without changing the panel geometry.
-These settings apply only to the dongle; standalone and peripheral displays are
-unchanged.
+The dongle declares **500 ppm LF-clock accuracy** in `toucan_dongle.conf`.
+On the tested XIAO Prospector, the original 50 ppm declaration understated the
+measured clock drift; changing only this declaration fixed the recurring split
+connection timeouts and restored typing from both halves. It changes BLE timing
+allowances, not the clock source, PHY, peripheral latency, or stored pairings.
+
+The new branch provides four screen layouts. **Operator** is selected in
+`boards/shields/toucan/toucan_dongle.conf`. To choose another, replace
+`CONFIG_PROSPECTOR_STATUS_SCREEN_OPERATOR=y` with exactly one of:
+
+```ini
+CONFIG_PROSPECTOR_STATUS_SCREEN_CLASSIC=y
+CONFIG_PROSPECTOR_STATUS_SCREEN_RADII=y
+CONFIG_PROSPECTOR_STATUS_SCREEN_FIELD=y
+```
+
+Do not enable multiple layouts at once. The branch also adds modifier and caps-word
+indicators; see the [Prospector module instructions] for layout-specific options.
+
+The Prospector reserves a **32 KiB LVGL heap**, **two quarter-screen draw
+buffers** (half a screen combined), and an **8 KiB display stack**. The heap
+budget is retained from the earlier firmware: hardware testing found allocation
+failures during battery-bar fades with its default 10 KB heap, matching
+[this upstream report](https://github.com/carrefinho/prospector-zmk-module/issues/7#issuecomment-3535137446).
+The new branch defaults to double buffering; using two half-screen buffers would
+exhaust RAM with this heap. These memory settings apply only to the dongle and do
+not change either panel's geometry. Toucan's LVGL 9 display uses the updated
+upstream heap defaults (8 KiB custom screen / 5 KiB built-in peripheral screen).
 
 On the peripheral left's screen, the waves + tick mean a low-level split Bluetooth
 connection, **not** successful encryption or working input to the host. A tick can
@@ -155,7 +201,63 @@ Brightness defaults to a fixed 50%, with the optional ambient-light sensor
 `CONFIG_PROSPECTOR_USE_AMBIENT_LIGHT_SENSOR=y` and remove fixed brightness if the
 sensor is installed.
 
-### First setup / switching to Prospector
+### Guided local Operator flasher (macOS)
+
+Run **`scripts/flash-prospector`** for the terminal wizard. Its prepared local
+bundle lives in `.firmware/prospector-operator/` (ignored by Git), so it can flash
+these uncommitted changes without waiting for CI. It validates the Operator
+layout, compiled roles, matching ZMK/Zephyr versions, UF2 structure, checksums, and
+source fingerprint before using the bundle. `--dry-run` validates/lists it without
+accessing any USB devices.
+
+Choose **1 — clean setup** when switching centrals, clearing broken bonds, or
+starting fresh. This explicitly asks you to type `ERASE`, then guides you through
+settings-reset + normal firmware on **dongle, left, right**, one device at a time.
+It erases split/host bonds and Studio edits on all three. Choose **2 — update**
+only for an already-paired Prospector set; this never resets settings.
+
+Keep the other two devices **off**, use a USB **data** cable, and double-tap the
+physical reset button when prompted. Before each write, the wizard checks that
+exactly one XIAO nRF52840 bootloader is mounted and asks you to confirm the device
+name. It cannot distinguish these identical controllers electrically, so check
+which physical device is connected. Use your Mac/another keyboard while flashing.
+Afterwards it walks you through powering the dongle, then **left first**, then
+right. `q` at a prompt or Ctrl-C cancels; completed resets/writes are not undone.
+
+**Resume / skip steps:** enter **`s`** (or `skip`) at any settings-reset or firmware
+prompt, including the device-name confirmation, to skip **only that write**.
+Skipped steps never copy firmware or erase settings; skip at the first prompt
+to avoid waiting for a drive too. They are listed in the final summary rather
+than marked as verified. Rerun the wizard in the **same mode** and skip work
+already completed with this exact bundle. For example, if the dongle's reset and
+firmware writes are already done, choose **1 — clean setup**, confirm `ERASE`, and
+enter `s` at both dongle steps to resume at the left half's settings reset. Do not
+switch to update mode if either half still needs its settings reset. Keep skipped
+devices off/disconnected too.
+
+The controllers reboot and disconnect immediately after accepting UF2 data,
+**without a clean eject**. This is expected, including macOS's “Disk Not Ejected
+Properly” notification. The wizard tolerates copy/sync errors when the bootloader
+disappears during the write; errors with the drive still mounted remain fatal.
+A disconnect is not proof of working runtime firmware: check displays and input
+afterwards.
+
+To refresh the bundle after firmware-source changes, first rebuild all four
+Prospector-profile targets with west (as below), then package them:
+
+```sh
+scripts/flash-prospector --prepare-from /absolute/path/to/west/build
+scripts/flash-prospector --dry-run
+scripts/flash-prospector
+```
+
+The preparer accepts `toucan-prospector`, `toucan-left-peripheral`, `toucan-right`,
+and `toucan-reset` build directories, or the short names `prospector`,
+`left-peripheral`, `right`, and `reset`. Build directories must be up to date.
+Use `--firmware-dir PATH` to prepare/use a different bundle directory. The wizard
+refuses an old bundle after keymap, manifest, shield, or display-source edits.
+
+### First setup / switching to Prospector (CI artifacts)
 
 1. Push the config and wait for a successful CI build. Preview the selection with
    `scripts/build-and-load --profile prospector --dry-run` (no devices are flashed).
@@ -194,8 +296,9 @@ reintroducing it on a later switch to dongle mode.
 ## Building and flashing
 
 The CI matrix builds standalone left, shared right, Prospector peripheral left,
-Prospector central, and settings reset using ZMK v0.3.0. Push these changes and
-wait for the GitHub Actions build to succeed, then use `scripts/build-and-load`
+Prospector central, and settings reset using the pinned Zephyr 4.1 ZMK snapshot.
+Push these changes and wait for the GitHub Actions build to succeed, then use
+`scripts/build-and-load`
 to flash the desired profile. With no arguments it still flashes the original
 standalone **left then right**. Both central images retain the
 `studio-rpc-usb-uart` snippet. Settings reset is normally unnecessary for routine
@@ -211,21 +314,21 @@ then build from its root with this repo loaded as a keyboard module:
 ```sh
 # Set REPO to the absolute path of this checkout, after west init / west update.
 west zephyr-export
-west build -p always -s zmk/app -d build/toucan-left -b seeeduino_xiao_ble \
+west build -p always -s zmk/app -d build/toucan-left -b xiao_ble//zmk \
   -S studio-rpc-usb-uart -- -DZMK_CONFIG="$REPO/config" \
   -DZMK_EXTRA_MODULES="$REPO" \
   -DSHIELD="toucan_left rgbled_adapter nice_view_gem" -DCONFIG_ZMK_STUDIO=y
-west build -p always -s zmk/app -d build/toucan-right -b seeeduino_xiao_ble \
+west build -p always -s zmk/app -d build/toucan-right -b xiao_ble//zmk \
   -- -DZMK_CONFIG="$REPO/config" -DZMK_EXTRA_MODULES="$REPO" \
   -DSHIELD="toucan_right rgbled_adapter"
-west build -p always -s zmk/app -d build/toucan-reset -b seeeduino_xiao_ble \
+west build -p always -s zmk/app -d build/toucan-reset -b xiao_ble//zmk \
   -- -DZMK_CONFIG="$REPO/config" -DZMK_EXTRA_MODULES="$REPO" -DSHIELD=settings_reset
 
 # Optional Prospector profile (the right image above is shared).
-west build -p always -s zmk/app -d build/toucan-left-peripheral -b seeeduino_xiao_ble \
+west build -p always -s zmk/app -d build/toucan-left-peripheral -b xiao_ble//zmk \
   -- -DZMK_CONFIG="$REPO/config" -DZMK_EXTRA_MODULES="$REPO" \
   -DSHIELD="toucan_left_peripheral rgbled_adapter nice_view_gem"
-west build -p always -s zmk/app -d build/toucan-prospector -b seeeduino_xiao_ble \
+west build -p always -s zmk/app -d build/toucan-prospector -b xiao_ble//zmk \
   -S studio-rpc-usb-uart -- -DZMK_CONFIG="$REPO/config" \
   -DZMK_EXTRA_MODULES="$REPO" -DSHIELD="toucan_dongle prospector_adapter" \
   -DCONFIG_ZMK_STUDIO=y
@@ -233,7 +336,8 @@ python3 "$REPO/scripts/check-builds.py" build/toucan-left build/toucan-right \
   build/toucan-reset build/toucan-left-peripheral build/toucan-prospector
 ```
 
-Use the ZMK 3.5 build environment for this pinned release. In the generated
+Use the Zephyr 4.1-compatible ZMK build environment (the pinned workflow's
+`zmkfirmware/zmk-build-arm:stable` image), not the old `:3.5` image. In the generated
 `.config`, check `CONFIG_INPUT_TPS43=y` on the right and
 `CONFIG_ZMK_FEATURE_BRAILLE=y`, Studio, and smooth scrolling on the **central**
 (standalone left or Prospector), never the peripherals.
@@ -267,4 +371,4 @@ SIL Open Font License, Version 1.1.
   [The beekeeb Toucan2 Keyboard]: https://beekeeb.com/introducing-toucan2/
   [beekeeb's Toucan2 firmware]: https://github.com/beekeeb/zmk-keyboard-toucan2/tree/6882c95bec5be89988e90feb621f78a7511e9ed7
   [official ZMK dongle guide]: https://zmk.dev/docs/hardware-integration/dongle
-  [Prospector module instructions]: https://github.com/carrefinho/prospector-zmk-module/tree/77a852293532879c992847e01db27abe4f94fa9f
+  [Prospector module instructions]: https://github.com/carrefinho/prospector-zmk-module/tree/ed98221f3b52b7066dbb10ba3af8a29150b93a5a

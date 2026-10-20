@@ -11,10 +11,13 @@ checker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checker)
 
 
-def memory_config(heap=32768, buffer=50, stack=4096):
-    return {f"CONFIG_LV_Z_MEM_POOL_SIZE={heap}",
-            f"CONFIG_LV_Z_VDB_SIZE={buffer}",
-            f"CONFIG_ZMK_DISPLAY_DEDICATED_THREAD_STACK_SIZE={stack}"}
+def memory_config(heap=32768, buffer=25, stack=8192, double=True):
+    config = {f"CONFIG_LV_Z_MEM_POOL_SIZE={heap}",
+              f"CONFIG_LV_Z_VDB_SIZE={buffer}",
+              f"CONFIG_ZMK_DISPLAY_DEDICATED_THREAD_STACK_SIZE={stack}"}
+    if double:
+        config.add("CONFIG_LV_Z_DOUBLE_VDB=y")
+    return config
 
 
 class ProspectorMemoryTests(unittest.TestCase):
@@ -29,13 +32,20 @@ class ProspectorMemoryTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             checker.check_prospector_memory(memory_config(buffer=100))
 
+    def test_two_half_screen_buffers_leave_too_little_headroom(self):
+        with self.assertRaises(AssertionError):
+            checker.check_prospector_memory(memory_config(buffer=50))
+
+    def test_single_half_screen_buffer_is_allowed(self):
+        checker.check_prospector_memory(memory_config(buffer=50, double=False))
+
     def test_invalid_draw_buffer(self):
         with self.assertRaises(AssertionError):
             checker.check_prospector_memory(memory_config(buffer=0))
 
     def test_display_stack_below_module_recommendation(self):
         with self.assertRaises(AssertionError):
-            checker.check_prospector_memory(memory_config(stack=2048))
+            checker.check_prospector_memory(memory_config(stack=4096))
 
     def test_full_refresh_cannot_use_partial_buffer(self):
         with self.assertRaises(AssertionError):
@@ -44,8 +54,12 @@ class ProspectorMemoryTests(unittest.TestCase):
     def test_more_heap_and_smaller_buffer_are_allowed(self):
         checker.check_prospector_memory(memory_config(heap=49152, buffer=25, stack=8192))
 
+    def test_shield_memory_settings_match_the_budget(self):
+        conf = SCRIPT.parents[1] / "boards/shields/toucan/toucan_dongle.conf"
+        checker.check_prospector_memory(set(conf.read_text().splitlines()))
+
     def test_missing_memory_settings(self):
-        for setting in memory_config():
+        for setting in memory_config() - {"CONFIG_LV_Z_DOUBLE_VDB=y"}:
             with self.subTest(setting=setting), self.assertRaises(AssertionError):
                 checker.check_prospector_memory(memory_config() - {setting})
 

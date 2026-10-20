@@ -8,11 +8,11 @@ import unittest
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/build-and-load"
-LEFT = "toucan_left rgbled_adapter nice_view_gem-seeeduino_xiao_ble-zmk.uf2"
-RIGHT = "toucan_right rgbled_adapter-seeeduino_xiao_ble-zmk.uf2"
+LEFT = "toucan_left rgbled_adapter nice_view_gem-xiao_ble__zmk-zmk.uf2"
+RIGHT = "toucan_right rgbled_adapter-xiao_ble__zmk-zmk.uf2"
 PERIPHERAL = "toucan_left_peripheral-zmk.uf2"
 DONGLE = "toucan_prospector-zmk.uf2"
-RESET = "settings_reset-seeeduino_xiao_ble-zmk.uf2"
+RESET = "settings_reset-xiao_ble__zmk-zmk.uf2"
 
 
 class BuildAndLoadTests(unittest.TestCase):
@@ -109,7 +109,12 @@ else:
     def test_old_artifacts_still_work_for_standalone(self):
         (self.artifacts / DONGLE).unlink()
         (self.artifacts / PERIPHERAL).unlink()
-        self.assertEqual(self.selected(), [LEFT, RIGHT])
+        legacy = {}
+        for name in (LEFT, RIGHT, RESET):
+            legacy[name] = name.replace("xiao_ble__zmk", "seeeduino_xiao_ble")
+            (self.artifacts / name).rename(self.artifacts / legacy[name])
+        self.assertEqual(self.selected(), [legacy[LEFT], legacy[RIGHT]])
+        self.assertEqual(self.selected("reset"), [legacy[RESET]])
 
     def test_missing_peripheral_must_not_fall_back_to_standalone(self):
         (self.artifacts / PERIPHERAL).unlink()

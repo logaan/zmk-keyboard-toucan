@@ -3,7 +3,7 @@ id: toucan
 name: Toucan2
 type: shield
 url: https://github.com/beekeeb/zmk-keyboard-toucan2/
-requires: [seeeduino_xiao_ble]
+requires: [seeed_xiao]
 features:
   - keys
   - display
