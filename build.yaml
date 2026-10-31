@@ -31,7 +31,7 @@ include:
     shield: toucan_left_peripheral rgbled_adapter nice_view_gem
     artifact-name: toucan_left_peripheral-zmk
   - board: xiao_ble//zmk
-    shield: toucan_dongle prospector_adapter
+    shield: toucan_dongle prospector_adapter toucan_braille_ui
     snippet: studio-rpc-usb-uart
     cmake-args: -DCONFIG_ZMK_STUDIO=y
     artifact-name: toucan_prospector-zmk

@@ -1,0 +1,16 @@
+# The Prospector owns its panel/backlight drivers. Replace only its screen
+# source after shield discovery, leaving the pinned vendor checkout untouched.
+function(toucan_replace_prospector_screen)
+  get_property(libraries GLOBAL PROPERTY ZEPHYR_LIBS)
+  foreach(library ${libraries})
+    if(library MATCHES "prospector.*adapter")
+      get_target_property(sources ${library} SOURCES)
+      list(FILTER sources EXCLUDE REGEX "custom_status_screen.c$")
+      set_property(TARGET ${library} PROPERTY SOURCES "${sources}")
+    endif()
+  endforeach()
+endfunction()
+cmake_language(DEFER DIRECTORY ${CMAKE_SOURCE_DIR} CALL toucan_replace_prospector_screen)
+zephyr_library()
+zephyr_library_include_directories(${APPLICATION_SOURCE_DIR}/include)
+zephyr_library_sources(screen.c)

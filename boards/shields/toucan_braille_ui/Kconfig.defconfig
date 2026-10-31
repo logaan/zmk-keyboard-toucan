@@ -1,0 +1,19 @@
+if SHIELD_TOUCAN_BRAILLE_UI
+
+choice PROSPECTOR_STATUS_SCREEN_LAYOUT
+    default PROSPECTOR_STATUS_SCREEN_BRAILLE
+
+config PROSPECTOR_STATUS_SCREEN_BRAILLE
+    bool "Toucan braille dashboard"
+    select LV_USE_LABEL
+    select LV_FONT_MONTSERRAT_14
+    select LV_FONT_MONTSERRAT_20
+    select LV_FONT_MONTSERRAT_28
+
+endchoice
+
+config TOUCAN_BRAILLE_UI_LAYER
+    int "Braille keymap layer index"
+    default 5
+
+endif

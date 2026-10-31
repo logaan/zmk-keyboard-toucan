@@ -1,0 +1,2 @@
+config SHIELD_TOUCAN_BRAILLE_UI
+    def_bool $(shields_list_contains,toucan_braille_ui)

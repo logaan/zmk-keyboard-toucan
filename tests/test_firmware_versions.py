@@ -16,10 +16,10 @@ class FirmwareVersionTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/build.yml").read_text()
         self.assertIn(f"zmkfirmware/zmk/.github/workflows/build-user-config.yml@{revision}", workflow)
 
-    def test_prospector_defaults_to_operator(self):
+    def test_prospector_defaults_to_original_braille_dashboard(self):
         config = (ROOT / "boards/shields/toucan/toucan_dongle.conf").read_text().splitlines()
         layouts = [line for line in config if line.startswith("CONFIG_PROSPECTOR_STATUS_SCREEN_")]
-        self.assertEqual(layouts, ["CONFIG_PROSPECTOR_STATUS_SCREEN_OPERATOR=y"])
+        self.assertEqual(layouts, ["CONFIG_PROSPECTOR_STATUS_SCREEN_BRAILLE=y"])
 
     def test_every_target_uses_the_zmk_xiao_variant(self):
         matrix = (ROOT / "build.yaml").read_text()
