@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <lvgl.h>
+/* The real pinned LVGL offset makes scroll progress observable without OCR. */
+#include "src/widgets/label/lv_label_private.h"
 #include "platform.h"
 #include "../../boards/shields/toucan_braille_ui/screen.c"
 static uint8_t pixels[240*280*3], draw[240*280*3];
@@ -111,5 +113,28 @@ int main(int argc,char **argv) {
  for(unsigned i=0;i<4;i++)
   assert(lv_color_eq(lv_obj_get_style_bg_color(mod_chip[i],0),
                     lv_color_hex(i==1?0xff6b00:0x303936)));
+ /* Refresh runs at50ms on hardware. Unchanged input must not restart scrolling. */
+ strcpy(state.braille.preview,"characteristically");
+ strcpy(state.braille.pending,"12345678 12345678 12345678 12345678 12345678");
+ state.braille.pending_count=5;refresh(NULL);lv_refr_now(d);
+ int preview_travel=0,buffer_travel=0;
+ for(unsigned i=0;i<60;i++){
+  lv_tick_inc(50);lv_timer_handler();refresh(NULL);lv_refr_now(d);
+  int x=((lv_label_t *)preview_label)->offset.x;
+  int b=((lv_label_t *)pending_label)->offset.x;
+  if(-x>preview_travel)preview_travel=-x;
+  if(-b>buffer_travel)buffer_travel=-b;
+ }
+ assert(preview_travel>10);assert(buffer_travel>10);
+ state.editor.active=true;
+ strcpy(state.editor.body,"Input: 12345678\nPosition: anywhere\n1/16 key_press\nparam1: 458756\nparam2: 0\nSecond action\nThird action\nFourth action\nFifth action\nSixth action\ns Save / c Cancel");
+ refresh(NULL);lv_refr_now(d);
+ int editor_travel=0;
+ for(unsigned i=0;i<60;i++){
+  lv_tick_inc(50);lv_timer_handler();refresh(NULL);lv_refr_now(d);
+  int y=((lv_label_t *)preview_label)->offset.y;
+  if(-y>editor_travel)editor_travel=-y;
+ }
+ assert(editor_travel>10);
  return 0;
 }

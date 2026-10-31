@@ -126,6 +126,15 @@ static void text_if_changed(lv_obj_t *obj, const char *text) {
     if (strcmp(lv_label_get_text(obj), text)) lv_label_set_text(obj, text);
 }
 
+/* LVGL restarts label animations when long mode is assigned, even if the
+ * value is unchanged. Font changes also trigger a text layout refresh. */
+static void scrolling_font(lv_obj_t *obj, const lv_font_t *font) {
+    if (lv_obj_get_style_text_font(obj, 0) != font)
+        lv_obj_set_style_text_font(obj, font, 0);
+    if (lv_label_get_long_mode(obj) != LV_LABEL_LONG_SCROLL_CIRCULAR)
+        lv_label_set_long_mode(obj, LV_LABEL_LONG_SCROLL_CIRCULAR);
+}
+
 static void refresh(lv_timer_t *timer) {
     struct dashboard_state copy;
     k_spinlock_key_t key = k_spin_lock(&state_lock);
@@ -163,8 +172,7 @@ static void refresh(lv_timer_t *timer) {
         lv_label_set_text(mode_label, copy.editor.title);
         lv_obj_set_pos(preview_label, 10, 141);
         lv_obj_set_size(preview_label, 220, 116);
-        lv_obj_set_style_text_font(preview_label, &lv_font_montserrat_14, 0);
-        lv_label_set_long_mode(preview_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+        scrolling_font(preview_label, &lv_font_montserrat_14);
         text_if_changed(preview_label, copy.editor.body);
         text_if_changed(notice_label, copy.editor.error ? "Failed: retry / Sp12 back" :
                           "Sp1/4 move; Sp15 enter");
@@ -174,9 +182,8 @@ static void refresh(lv_timer_t *timer) {
 #endif
     lv_obj_set_pos(preview_label, 10, 156);
     lv_obj_set_size(preview_label, 168, 36);
-    lv_obj_set_style_text_font(preview_label, &lv_font_montserrat_28, 0);
     /* Long translations scroll instead of silently losing their suffix. */
-    lv_label_set_long_mode(preview_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    scrolling_font(preview_label, &lv_font_montserrat_28);
     lv_label_set_text(mode_label, braille_display_mode_label(copy.braille.mode));
     lv_label_set_text(activity_label, copy.braille_layer ?
                       (copy.braille.waiting ? "BRAILLE / PENDING" : "BRAILLE / PREVIEW") : "KEYBOARD");
