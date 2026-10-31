@@ -35,8 +35,7 @@ manifest:
       revision: ed98221f3b52b7066dbb10ba3af8a29150b93a5a
     - name: zmk-braille-module
       url: https://github.com/logaan/zmk-braille-module
-      # Published module snapshot: contextual UEB Grade 1, Computer8 and
-      # factory commands with native ZMK verification.
-      revision: 86a25867cf27f6d2d7b25e8ef17066d91c202e2a
+      # Computer8 and UEB1 with direct/cycling character-mode controls.
+      revision: 23482a3e9e7e582777404818e4c5eba3d2a4ec87
   self:
     path: config
