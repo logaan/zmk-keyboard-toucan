@@ -12,7 +12,8 @@ import subprocess
 import tempfile
 import zlib
 ROOT=Path(__file__).resolve().parents[1]
-STATES=('held','buffer','offline','settings','confirm','shorthand')
+STATES=('held','buffer','offline','settings','confirm','shorthand',
+        'low-battery','usb-fallback','all-modifiers','eight-dot','long-buffer','editor-error')
 def png(data):
     assert len(data)==240*280*3
     def chunk(kind,value):
