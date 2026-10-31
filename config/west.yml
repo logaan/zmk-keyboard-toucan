@@ -35,7 +35,7 @@ manifest:
       revision: ed98221f3b52b7066dbb10ba3af8a29150b93a5a
     - name: zmk-braille-module
       url: https://github.com/logaan/zmk-braille-module
-      # Four Braille modes including optional Computer8 multi-cell shorthand.
-      revision: 4d57483428766364f2fbf3a39897e4797897be4c
+      # Four Braille modes including Computer8 shorthand and shared-letter wordsigns.
+      revision: e52269e640f713c0b8f413bc59ab4a8844408d6f
   self:
     path: config
