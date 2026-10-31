@@ -12,6 +12,7 @@
 #include <zmk/events/battery_state_changed.h>
 #include <zmk/events/split_central_status_changed.h>
 #include <braille_display.h>
+#include <braille_mode_labels.h>
 #include <braille_engine.h>
 #include <braille_tables.h>
 #ifdef CONFIG_ZMK_BRAILLE_SETTINGS_UI
@@ -85,7 +86,7 @@ void braille_engine_notify_dropped_prefix(const uint16_t *cells, uint8_t count,
     const char *mode = braille_tables_active();
     k_spinlock_key_t key = k_spin_lock(&state_lock);
     snprintf(state.notice, sizeof(state.notice), "%s",
-             mode && !strcmp(mode, "computer8") ? "Reserved cell" : "Incomplete input dropped");
+             braille_display_computer8_mode(mode) ? "Reserved cell" : "Incomplete input dropped");
     notice_until = k_uptime_get() + 1800;
     k_spin_unlock(&state_lock, key);
 }
@@ -145,7 +146,7 @@ static void refresh(lv_timer_t *timer) {
     lv_obj_set_height(preview_label, 65);
     lv_label_set_long_mode(preview_label, LV_LABEL_LONG_DOT);
     lv_label_set_text_fmt(mode_label, "%s / %s", copy.braille_layer ? "BRAILLE" : "KEYBOARD",
-                          copy.braille.mode);
+                          braille_display_mode_label(copy.braille.mode));
     lv_label_set_text(preview_label, copy.braille_layer ?
                       (copy.braille.preview[0] ? copy.braille.preview : "...") : "Ready");
     char dots[12];

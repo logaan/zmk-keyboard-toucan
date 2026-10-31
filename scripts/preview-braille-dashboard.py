@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import zlib
 ROOT=Path(__file__).resolve().parents[1]
-STATES=('held','buffer','offline','settings','confirm')
+STATES=('held','buffer','offline','settings','confirm','shorthand')
 def png(data):
     assert len(data)==240*280*3
     def chunk(kind,value):
@@ -22,12 +22,14 @@ def png(data):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--lvgl',required=True,type=Path)
+    parser.add_argument('--braille-module',type=Path,default=ROOT.parent/'braille-module')
     parser.add_argument('--output',type=Path,default=ROOT/'docs/braille-dashboard')
     args=parser.parse_args();args.output.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='braille-dashboard-') as temp:
         build=Path(temp)
         subprocess.run(['cmake','-S',str(ROOT/'tests/dashboard_preview'),'-B',str(build),
-                        '-DLVGL_SOURCE='+str(args.lvgl.resolve())],check=True)
+                        '-DLVGL_SOURCE='+str(args.lvgl.resolve()),
+                        '-DBRAILLE_SOURCE='+str(args.braille_module.resolve())],check=True)
         subprocess.run(['cmake','--build',str(build),'-j4'],check=True)
         for state in STATES:
             raw=build/(state+'.rgb')

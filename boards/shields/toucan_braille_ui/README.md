@@ -34,3 +34,9 @@ the top battery/endpoint/modifier area should remain visible during settings.
 Validate a real build with `python3 scripts/check-braille-dashboard.py BUILD`.
 Physical panel readability, battery slot assignment and host connection changes
 still require hardware acceptance; no keyboard is flashed by the checks.
+
+The optional `computer8_short` mode is labelled `8dot+short` on the dashboard
+to keep the mode row on one line. Its saved identifier remains unchanged.
+The shorthand render shows pending dot 1 plus held dots 12 previewing `about`.
+The renderer script accepts `--braille-module PATH` for the module checkout
+containing the shared mode-label helper (by default the sibling checkout).

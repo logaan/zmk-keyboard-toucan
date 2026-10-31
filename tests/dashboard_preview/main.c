@@ -27,6 +27,11 @@ int main(int argc,char **argv) {
   state.braille.held=9;state.braille.pending_count=1;state.braille.waiting=true;
   strcpy(state.braille.pending,"1");
  }
+ if(!strcmp(argv[1],"shorthand")){
+  strcpy(state.braille.mode,"computer8_short");strcpy(state.braille.preview,"about");
+  state.braille.held=3;state.braille.pending_count=1;state.braille.waiting=true;
+  strcpy(state.braille.pending,"1");
+ }
  if(!strcmp(argv[1],"offline")){
   state.connected[0]=state.connected[1]=false;state.known[0]=state.known[1]=false;
   strcpy(state.endpoint,"USB offline");state.mods=0;strcpy(state.notice,"2 saved rules skipped");
