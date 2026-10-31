@@ -14,10 +14,19 @@
 #include <braille_display.h>
 #include <braille_engine.h>
 #include <braille_tables.h>
+#ifdef CONFIG_ZMK_BRAILLE_SETTINGS_UI
+#include <braille_editor.h>
+#endif
+#ifdef CONFIG_ZMK_BRAILLE_STORAGE
+#include <braille_storage.h>
+#endif
 #include "format.h"
 
 struct dashboard_state {
     struct braille_display_snapshot braille;
+#ifdef CONFIG_ZMK_BRAILLE_SETTINGS_UI
+    struct braille_editor_snapshot editor;
+#endif
     char endpoint[64];
     char notice[32];
     uint8_t mods;
@@ -35,6 +44,10 @@ static lv_obj_t *mode_label, *preview_label, *dots_label, *pending_label, *notic
 static void collect(struct k_work *work) {
     struct braille_display_snapshot braille;
     braille_display_snapshot(&braille);
+#ifdef CONFIG_ZMK_BRAILLE_SETTINGS_UI
+    struct braille_editor_snapshot editor;
+    braille_editor_snapshot(&editor);
+#endif
     struct zmk_endpoint_instance preferred = zmk_endpoint_get_preferred();
     struct zmk_endpoint_instance selected = zmk_endpoint_get_selected();
     char endpoint[64];
@@ -47,10 +60,21 @@ static void collect(struct k_work *work) {
     bool active = zmk_keymap_layer_active(CONFIG_TOUCAN_BRAILLE_UI_LAYER);
     k_spinlock_key_t key = k_spin_lock(&state_lock);
     state.braille = braille;
+#ifdef CONFIG_ZMK_BRAILLE_SETTINGS_UI
+    state.editor = editor;
+#endif
     memcpy(state.endpoint, endpoint, sizeof(endpoint));
     state.mods = mods;
     state.braille_layer = active;
-    if (k_uptime_get() >= notice_until) state.notice[0] = 0;
+    if (k_uptime_get() >= notice_until) {
+        state.notice[0] = 0;
+#ifdef CONFIG_ZMK_BRAILLE_STORAGE
+        if (braille_storage_last_error())
+            snprintf(state.notice, sizeof(state.notice), "Storage error %d", braille_storage_last_error());
+        else if (braille_storage_skipped_count())
+            snprintf(state.notice, sizeof(state.notice), "%u saved rules skipped", braille_storage_skipped_count());
+#endif
+    }
     k_spin_unlock(&state_lock, key);
 }
 K_WORK_DEFINE(collect_work, collect);
@@ -94,14 +118,32 @@ static void refresh(lv_timer_t *timer) {
     k_spin_unlock(&state_lock, key);
     for (unsigned i = 0; i < 2; ++i) {
         if (copy.connected[i] && copy.known[i])
-            lv_label_set_text_fmt(battery_label[i], "%s  %u%%", i ? "BOARD 2" : "BOARD 1", copy.battery[i]);
-        else lv_label_set_text_fmt(battery_label[i], "%s  %s", i ? "BOARD 2" : "BOARD 1",
+            lv_label_set_text_fmt(battery_label[i], "%s  %u%%", i ? "BOARD2" : "BOARD1", copy.battery[i]);
+        else lv_label_set_text_fmt(battery_label[i], "%s %s", i ? "BOARD2" : "BOARD1",
                                   copy.connected[i] ? "--" : "offline");
     }
     lv_label_set_text(endpoint_label, copy.endpoint);
     lv_label_set_text_fmt(mods_label, "%s  %s  %s  %s",
                          copy.mods & 0x11 ? "CTRL" : "----", copy.mods & 0x22 ? "SHIFT" : "-----",
                          copy.mods & 0x44 ? "ALT" : "---", copy.mods & 0x88 ? "CMD" : "---");
+#ifdef CONFIG_ZMK_BRAILLE_SETTINGS_UI
+    if (copy.editor.active) {
+        lv_label_set_text(mode_label, copy.editor.title);
+        lv_obj_set_style_text_font(preview_label, &lv_font_montserrat_14, 0);
+        lv_obj_set_height(preview_label, 128);
+        lv_label_set_long_mode(preview_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+        lv_label_set_text(preview_label, copy.editor.body);
+        lv_label_set_text(dots_label, "");
+        lv_label_set_text(pending_label, "");
+        lv_label_set_text(notice_label, copy.editor.error ? "Failed: retry or Sp12 back" :
+                          "Sp1/4 move; Sp15 enter");
+        k_work_submit(&collect_work);
+        return;
+    }
+#endif
+    lv_obj_set_style_text_font(preview_label, &lv_font_montserrat_28, 0);
+    lv_obj_set_height(preview_label, 65);
+    lv_label_set_long_mode(preview_label, LV_LABEL_LONG_DOT);
     lv_label_set_text_fmt(mode_label, "%s / %s", copy.braille_layer ? "BRAILLE" : "KEYBOARD",
                           copy.braille.mode);
     lv_label_set_text(preview_label, copy.braille_layer ?
