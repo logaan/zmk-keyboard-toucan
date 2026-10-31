@@ -176,13 +176,13 @@
         // The left outer thumb and top-right key explicitly return to BASE.
         // Top row: outer left selects Computer8; inner left UEB1; inner right UEB2.
         // Right outer thumb cycles compiled modes; left home-row inner key opens settings.
-        // Navigation sits above the dots.
+        // Right home-row inner key selects 8-dot with shorthand. Navigation sits above the dots.
         // LS(TAB) holds Shift with Tab and releases it when Tab is released.
         braille {
             display-name = "BRL";
             bindings = <
                 &bselect BRAILLE_MODE_COMPUTER8 &kp LEFT        &kp ESC         &kp UP          &kp LS(TAB)     &bselect BRAILLE_MODE_UEB1                       &bselect BRAILLE_MODE_UEB2           &kp TAB         &kp DOWN        &kp RET         &kp RIGHT       &to BASE
-                &kp LCTRL       &bc 7           &bc 3           &bc 2           &bc 1           &bsettings                                      &none           &bc 4           &bc 5           &bc 6           &bc 8           &none
+                &kp LCTRL       &bc 7           &bc 3           &bc 2           &bc 1           &bsettings                                      &bselect BRAILLE_MODE_COMPUTER8_SHORT           &bc 4           &bc 5           &bc 6           &bc 8           &none
                 &kp LSHFT       &bc 8           &bc 6           &bc 5           &bc 4           &none                                           &none           &bc 1           &bc 2           &bc 3           &bc 7           &none
                                                                                 &to BASE        &kp BSPC        &kp LGUI        &bspc           &kp RET         &bselect BRAILLE_MODE_NEXT
             >;
