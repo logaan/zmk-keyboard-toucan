@@ -7,8 +7,7 @@ of its existing status screens or widgets. The companion shield removes the
 vendor screen source at configure time and supplies its own screen.
 
 The top row shows both half batteries; unknown readings display `--`, and
-disconnected halves display `offline` instead of stale percentages. BOARD 1 and
-BOARD 2 correspond to split slots 0 and 1 (pairing order), not assumed physical sides.
+disconnected halves display `offline` instead of stale percentages. B1 and B2 correspond to split slots 0 and 1 (pairing order), not assumed physical sides.
 The endpoint row shows the preferred Bluetooth channel (numbered 1–5) or USB,
 connection state, and any active fallback transport. CTRL/SHIFT/ALT/CMD reflect
 the effective HID modifier report, including sticky modifiers.

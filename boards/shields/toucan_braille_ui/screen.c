@@ -118,8 +118,8 @@ static void refresh(lv_timer_t *timer) {
     k_spin_unlock(&state_lock, key);
     for (unsigned i = 0; i < 2; ++i) {
         if (copy.connected[i] && copy.known[i])
-            lv_label_set_text_fmt(battery_label[i], "%s  %u%%", i ? "BOARD2" : "BOARD1", copy.battery[i]);
-        else lv_label_set_text_fmt(battery_label[i], "%s %s", i ? "BOARD2" : "BOARD1",
+            lv_label_set_text_fmt(battery_label[i], "%s  %u%%", i ? "B2" : "B1", copy.battery[i]);
+        else lv_label_set_text_fmt(battery_label[i], "%s %s", i ? "B2" : "B1",
                                   copy.connected[i] ? "--" : "offline");
     }
     lv_label_set_text(endpoint_label, copy.endpoint);
