@@ -35,7 +35,7 @@ manifest:
       revision: ed98221f3b52b7066dbb10ba3af8a29150b93a5a
     - name: zmk-braille-module
       url: https://github.com/logaan/zmk-braille-module
-      # Three Braille modes, persistent overrides, and dongle preview support.
-      revision: 721dd0d20569525776466c5563d0da3b5cb21986
+      # Verified three-mode Braille, persistent editor, and display support.
+      revision: c8dfed80dd6b39ef4be74a08bef103fce9302036
   self:
     path: config
